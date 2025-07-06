@@ -1,0 +1,8 @@
+ticker,event,time,impact
+AAPL,Earnings Release,07:00 EST,High
+NVDA,GPU Conference,09:00 EST,Medium
+TSLA,Production Update,08:30 EST,High
+MSFT,Cloud Revenue Report,07:30 EST,Medium
+GOOGL,Ad Revenue Guidance,08:00 EST,High
+SPY,CPI Release,08:30 EST,High
+QQQ,Fed Speech,10:00 EST,Medium
