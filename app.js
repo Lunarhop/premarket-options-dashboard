@@ -1,674 +1,512 @@
-// Premarket Options Trading Dashboard JavaScript
+// Market Dashboard Application
+class MarketDashboard {
+    constructor() {
+        this.currentPeriod = '1D';
+        this.currentSector = 'all';
+        this.data = this.getMarketData();
+        this.init();
+    }
 
-// Data from the provided JSON
-const data = {
-  "premarket_movers": [
-    {"ticker": "AMZN", "prev_close": 183.86, "premarket_price": 205.31, "change_pct": 11.66, "volume": 2528388, "avg_volume": 9916786, "relative_volume": 0.25, "market_cap_b": 2044.1, "sector": "Technology"},
-    {"ticker": "GOOGL", "prev_close": 66.33, "premarket_price": 73.94, "change_pct": 11.48, "volume": 1600942, "avg_volume": 4275709, "relative_volume": 0.37, "market_cap_b": 2357.7, "sector": "Financial"},
-    {"ticker": "TSLA", "prev_close": 57.20, "premarket_price": 63.72, "change_pct": 11.40, "volume": 1866891, "avg_volume": 5521373, "relative_volume": 0.34, "market_cap_b": 644.9, "sector": "Healthcare"},
-    {"ticker": "AAPL", "prev_close": 181.09, "premarket_price": 201.03, "change_pct": 11.01, "volume": 1792743, "avg_volume": 5304572, "relative_volume": 0.34, "market_cap_b": 1794.6, "sector": "Consumer"},
-    {"ticker": "META", "prev_close": 72.77, "premarket_price": 80.76, "change_pct": 10.98, "volume": 3485659, "avg_volume": 4385357, "relative_volume": 0.79, "market_cap_b": 2427.1, "sector": "Technology"},
-    {"ticker": "NVDA", "prev_close": 104.60, "premarket_price": 97.45, "change_pct": -6.84, "volume": 4144887, "avg_volume": 8204212, "relative_volume": 0.51, "market_cap_b": 1807.3, "sector": "Financial"},
-    {"ticker": "MSFT", "prev_close": 114.19, "premarket_price": 112.00, "change_pct": -1.92, "volume": 1407371, "avg_volume": 6743066, "relative_volume": 0.21, "market_cap_b": 1839.4, "sector": "Consumer"}
-  ],
-  "iv_data": [
-    {"ticker": "NVDA", "iv_rank": 75, "iv_percentile": 56, "iv_current": 0.685, "iv_30day_avg": 0.435, "hv_30day": 0.633, "iv_hv_ratio": 1.08},
-    {"ticker": "MSFT", "iv_rank": 71, "iv_percentile": 15, "iv_current": 0.337, "iv_30day_avg": 0.342, "hv_30day": 0.605, "iv_hv_ratio": 0.56},
-    {"ticker": "AAPL", "iv_rank": 45, "iv_percentile": 27, "iv_current": 0.246, "iv_30day_avg": 0.280, "hv_30day": 0.264, "iv_hv_ratio": 0.93},
-    {"ticker": "TSLA", "iv_rank": 37, "iv_percentile": 58, "iv_current": 0.450, "iv_30day_avg": 0.547, "hv_30day": 0.349, "iv_hv_ratio": 1.29},
-    {"ticker": "GOOGL", "iv_rank": 12, "iv_percentile": 84, "iv_current": 0.506, "iv_30day_avg": 0.338, "hv_30day": 0.295, "iv_hv_ratio": 1.71}
-  ],
-  "options_flow": [
-    {"ticker": "TSLA", "call_volume": 45545, "put_volume": 3197, "total_volume": 48742, "put_call_ratio": 0.07, "call_oi": 99045, "put_oi": 42698, "total_oi": 141743, "unusual_activity": "Low"},
-    {"ticker": "NVDA", "call_volume": 49215, "put_volume": 15688, "total_volume": 64903, "put_call_ratio": 0.32, "call_oi": 35342, "put_oi": 45157, "total_oi": 80499, "unusual_activity": "Medium"},
-    {"ticker": "AAPL", "call_volume": 31309, "put_volume": 24919, "total_volume": 56228, "put_call_ratio": 0.80, "call_oi": 73734, "put_oi": 78467, "total_oi": 152201, "unusual_activity": "High"},
-    {"ticker": "MSFT", "call_volume": 27671, "put_volume": 28184, "total_volume": 55855, "put_call_ratio": 1.02, "call_oi": 52107, "put_oi": 59663, "total_oi": 111770, "unusual_activity": "High"}
-  ],
-  "catalysts": [
-    {"ticker": "AAPL", "event": "Earnings Release", "time": "07:00 EST", "impact": "High"},
-    {"ticker": "NVDA", "event": "GPU Conference", "time": "09:00 EST", "impact": "Medium"},
-    {"ticker": "TSLA", "event": "Production Update", "time": "08:30 EST", "impact": "High"},
-    {"ticker": "MSFT", "event": "Cloud Revenue Report", "time": "07:30 EST", "impact": "Medium"},
-    {"ticker": "GOOGL", "event": "Ad Revenue Guidance", "time": "08:00 EST", "impact": "High"},
-    {"ticker": "SPY", "event": "CPI Release", "time": "08:30 EST", "impact": "High"},
-    {"ticker": "QQQ", "event": "Fed Speech", "time": "10:00 EST", "impact": "Medium"}
-  ],
-  "technical_data": [
-    {"ticker": "NVDA", "rsi": 67.1, "macd": 1.345, "bb_position": 0.58, "atr": 6.84, "support": 217.61, "resistance": 278.95, "trend": "Bullish"},
-    {"ticker": "AAPL", "rsi": 62.0, "macd": 2.233, "bb_position": 0.86, "atr": 7.26, "support": 215.51, "resistance": 274.04, "trend": "Neutral"},
-    {"ticker": "GOOGL", "rsi": 58.2, "macd": -0.748, "bb_position": 0.59, "atr": 14.73, "support": 199.47, "resistance": 276.24, "trend": "Bearish"},
-    {"ticker": "TSLA", "rsi": 38.3, "macd": 0.428, "bb_position": 0.45, "atr": 14.93, "support": 187.04, "resistance": 240.72, "trend": "Bearish"},
-    {"ticker": "MSFT", "rsi": 30.7, "macd": -0.168, "bb_position": 0.74, "atr": 11.37, "support": 192.32, "resistance": 261.70, "trend": "Bearish"}
-  ]
-};
-
-// Global variables
-let currentSortColumn = null;
-let currentSortDirection = 'asc';
-
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
-    initializeDashboard();
-    updateTime();
-    setInterval(updateTime, 1000);
-});
-
-function initializeDashboard() {
-    setupNavigation();
-    populateOverview();
-    populateMoversTable();
-    populateVolatilityData();
-    populateCatalysts();
-    populateTechnicalData();
-    populateOptionsData();
-    setupFilters();
-    setupTableSorting();
-    createPutCallRatioChart();
-    showAlert('Dashboard loaded successfully!', 'success');
-}
-
-// Navigation handling
-function setupNavigation() {
-    const navTabs = document.querySelectorAll('.nav-tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    navTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.tab;
-            
-            // Update active tab
-            navTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            // Show target content
-            tabContents.forEach(content => {
-                content.classList.remove('active');
-                if (content.id === targetTab) {
-                    content.classList.add('active');
+    // Market data from the provided JSON
+    getMarketData() {
+        return {
+            "timestamp": "2025-06-18",
+            "last_updated": "2025-06-18T21:30:00Z",
+            "indices": [
+                {
+                    "symbol": "SPX",
+                    "name": "S&P 500", 
+                    "price": 6003.91,
+                    "change": 21.19,
+                    "change_percent": 0.35,
+                    "high": 6018.25,
+                    "low": 5980.68,
+                    "volume": "3.2B"
+                },
+                {
+                    "symbol": "DJI",
+                    "name": "Dow Jones",
+                    "price": 42343.04,
+                    "change": 127.24,
+                    "change_percent": 0.30,
+                    "high": 42510.07,
+                    "low": 42195.38,
+                    "volume": "467M"
+                },
+                {
+                    "symbol": "IXIC",
+                    "name": "NASDAQ",
+                    "price": 19616.11,
+                    "change": 95.02,
+                    "change_percent": 0.49,
+                    "high": 19660.77,
+                    "low": 19489.56,
+                    "volume": "4.1B"
                 }
+            ],
+            "top_gainers": [
+                {"symbol": "INTC", "name": "Intel Corp", "price": 21.53, "change_percent": 3.51},
+                {"symbol": "TSLA", "name": "Tesla Inc", "price": 327.02, "change_percent": 3.27},
+                {"symbol": "ADI", "name": "Analog Devices", "price": 232.03, "change_percent": 1.91},
+                {"symbol": "REGN", "name": "Regeneron Pharmaceuticals", "price": 517.85, "change_percent": 1.77},
+                {"symbol": "CHTR", "name": "Charter Communications", "price": 379.49, "change_percent": 1.56}
+            ],
+            "top_losers": [
+                {"symbol": "V", "name": "Visa Inc", "price": 349.82, "change_percent": -2.26},
+                {"symbol": "DOW", "name": "Dow Inc", "price": 28.94, "change_percent": -1.70},
+                {"symbol": "DIS", "name": "Walt Disney Co", "price": 117.29, "change_percent": -0.75},
+                {"symbol": "JNJ", "name": "Johnson & Johnson", "price": 151.28, "change_percent": -0.72},
+                {"symbol": "MCD", "name": "McDonald's Corp", "price": 290.59, "change_percent": -0.60}
+            ],
+            "currencies": [
+                {
+                    "pair": "EUR/USD",
+                    "rate": 1.1508,
+                    "change": -0.0060,
+                    "change_percent": -0.52,
+                    "high": 1.1589,
+                    "low": 1.1474
+                },
+                {
+                    "pair": "BTC/USD",
+                    "rate": 104725,
+                    "change": -1469,
+                    "change_percent": -1.38,
+                    "high": 106210,
+                    "low": 103597
+                }
+            ],
+            "commodities": [
+                {
+                    "symbol": "GOLD",
+                    "name": "Gold",
+                    "price": 3394.70,
+                    "unit": "USD/oz",
+                    "change": -13.40,
+                    "change_percent": -0.39,
+                    "high": 3405.20,
+                    "low": 3386.30
+                },
+                {
+                    "symbol": "SILVER", 
+                    "name": "Silver",
+                    "price": 36.74,
+                    "unit": "USD/oz",
+                    "change": -0.17,
+                    "change_percent": -0.46,
+                    "high": 36.82,
+                    "low": 36.69
+                },
+                {
+                    "symbol": "COPPER",
+                    "name": "Copper",
+                    "price": 4.849,
+                    "unit": "USD/lb",
+                    "change": -0.0040,
+                    "change_percent": -0.08,
+                    "high": 4.8685,
+                    "low": 4.8475
+                }
+            ],
+            "sectors": [
+                {"name": "Technology", "ytd_return": 5.09, "monthly_return": 9.97, "weight": 31.6},
+                {"name": "Communication Services", "ytd_return": 7.07, "monthly_return": 7.3, "weight": 9.6},
+                {"name": "Industrials", "ytd_return": 8.2, "monthly_return": 8.84, "weight": 8.7},
+                {"name": "Energy", "ytd_return": 3.47, "monthly_return": -13.0, "weight": 3.0},
+                {"name": "Utilities", "ytd_return": 6.2, "monthly_return": 0.4, "weight": 2.5},
+                {"name": "Financials", "ytd_return": 3.9, "monthly_return": 0.1, "weight": 14.3},
+                {"name": "Consumer Discretionary", "ytd_return": -6.3, "monthly_return": -3.7, "weight": 10.6},
+                {"name": "Health Care", "ytd_return": -4.7, "monthly_return": -9.1, "weight": 9.6},
+                {"name": "Consumer Staples", "ytd_return": 3.15, "monthly_return": 3.1, "weight": 5.9},
+                {"name": "Materials", "ytd_return": -2.3, "monthly_return": -7.5, "weight": 1.9},
+                {"name": "Real Estate", "ytd_return": 15.9, "monthly_return": -5.5, "weight": 2.1}
+            ],
+            "news": [
+                {
+                    "headline": "Fed Holds Rates Steady, Forecasts Two Cuts This Year",
+                    "summary": "Federal Reserve maintains current interest rates amid Middle East tensions, but signals potential for two rate cuts by year end.",
+                    "timestamp": "2025-06-18T16:00:00Z",
+                    "source": "MarketWatch"
+                },
+                {
+                    "headline": "Middle East Tensions Drive Market Volatility",
+                    "summary": "Escalating Israel-Iran tensions push gold and oil prices higher while weighing on equity markets.",
+                    "timestamp": "2025-06-18T14:30:00Z",
+                    "source": "Barron's"
+                },
+                {
+                    "headline": "Technology Sector Leads Market Recovery", 
+                    "summary": "Tech stocks rebound with 5.09% gains as AI spending continues to drive investor optimism.",
+                    "timestamp": "2025-06-18T13:15:00Z",
+                    "source": "Reuters"
+                },
+                {
+                    "headline": "Energy Sector Emerges as New Market Leader",
+                    "summary": "Energy stocks climb 3.47% as sector rotation begins amid commodity price strength.",
+                    "timestamp": "2025-06-18T12:00:00Z",
+                    "source": "Bloomberg"
+                }
+            ],
+            "investment_insights": {
+                "market_outlook": {
+                    "overall_sentiment": "Cautiously Optimistic",
+                    "key_drivers": [
+                        "Fed maintaining accommodative stance with potential rate cuts",
+                        "Technology sector showing resilience despite valuations", 
+                        "Geopolitical tensions creating volatility opportunities",
+                        "Sector rotation from growth to value continuing"
+                    ],
+                    "risk_factors": [
+                        "Middle East tensions affecting energy and safe-haven assets",
+                        "Inflation persistence despite cooling trends",
+                        "Trade policy uncertainties with tariff implications",
+                        "Corporate earnings pressure in some sectors"
+                    ]
+                },
+                "actionable_recommendations": [
+                    {
+                        "strategy": "Sector Rotation Play",
+                        "description": "Consider rotating from overvalued tech positions into undervalued energy and utilities",
+                        "risk_level": "Medium",
+                        "time_horizon": "3-6 months"
+                    },
+                    {
+                        "strategy": "Safe Haven Diversification",
+                        "description": "Increase gold allocation as hedge against geopolitical risks",
+                        "risk_level": "Low",
+                        "time_horizon": "6-12 months"
+                    },
+                    {
+                        "strategy": "Currency Hedging",
+                        "description": "Consider EUR/USD volatility trades given ECB policy divergence",
+                        "risk_level": "High",
+                        "time_horizon": "1-3 months"
+                    },
+                    {
+                        "strategy": "Quality Growth Focus",
+                        "description": "Focus on large-cap tech stocks with strong fundamentals and AI exposure",
+                        "risk_level": "Medium-High",
+                        "time_horizon": "12+ months"
+                    }
+                ]
+            }
+        };
+    }
+
+    init() {
+        this.updateTime();
+        this.updateLastUpdated();
+        this.setupEventListeners();
+        this.renderMarketOverview();
+        this.renderGainersLosers();
+        this.renderCurrencies();
+        this.renderCommodities();
+        this.renderSectors();
+        this.renderNews();
+        this.renderInvestmentInsights();
+        
+        // Update time every second
+        setInterval(() => this.updateTime(), 1000);
+    }
+
+    updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('currentTime').textContent = timeString;
+    }
+
+    updateLastUpdated() {
+        const lastUpdated = new Date(this.data.last_updated);
+        const timeString = lastUpdated.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById('lastUpdated').textContent = timeString;
+    }
+
+    setupEventListeners() {
+        // Time period filters
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentPeriod = e.target.dataset.period;
+                this.updateDisplayForPeriod();
             });
         });
-    });
-}
 
-// Time and countdown functions
-function updateTime() {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', {
-        timeZone: 'America/New_York',
-        hour12: true
-    });
-    
-    document.getElementById('current-time').textContent = timeString;
-    
-    // Market countdown (9:30 AM EST)
-    const marketOpen = new Date();
-    marketOpen.setHours(9, 30, 0, 0);
-    
-    if (now > marketOpen) {
-        marketOpen.setDate(marketOpen.getDate() + 1);
+        // Sector filter
+        document.getElementById('sectorFilter').addEventListener('change', (e) => {
+            this.currentSector = e.target.value;
+            this.updateDisplayForSector();
+        });
     }
-    
-    const timeDiff = marketOpen - now;
-    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-    
-    document.getElementById('countdown-timer').textContent = 
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
 
-// Overview section
-function populateOverview() {
-    // Calculate stats
-    const topGainer = Math.max(...data.premarket_movers.map(m => m.change_pct));
-    const topLoser = Math.min(...data.premarket_movers.map(m => m.change_pct));
-    const highIVCount = data.iv_data.filter(iv => iv.iv_rank > 50).length;
-    const majorCatalysts = data.catalysts.filter(c => c.impact === 'High').length;
-    
-    document.getElementById('top-gainer').textContent = `+${topGainer.toFixed(2)}%`;
-    document.getElementById('top-loser').textContent = `${topLoser.toFixed(2)}%`;
-    document.getElementById('high-iv').textContent = highIVCount;
-    document.getElementById('major-catalysts').textContent = majorCatalysts;
-    
-    // Populate opportunities
-    populateOpportunities();
-}
+    updateDisplayForPeriod() {
+        // In a real app, this would fetch different data based on the period
+        // For now, we'll just add a visual indication that the filter is working
+        const marketCards = document.querySelectorAll('.market-card');
+        marketCards.forEach(card => {
+            card.style.opacity = '0.7';
+            setTimeout(() => {
+                card.style.opacity = '1';
+            }, 200);
+        });
+    }
 
-function populateOpportunities() {
-    const opportunityList = document.getElementById('opportunity-list');
-    const opportunities = identifyHighProbabilitySetups();
-    
-    opportunityList.innerHTML = opportunities.map(opp => `
-        <div class="opportunity-item">
-            <div>
-                <div class="opportunity-ticker">${opp.ticker}</div>
-                <div class="opportunity-details">
-                    <div class="opportunity-metrics">
-                        <span>IV: ${opp.iv_rank}</span>
-                        <span>Gap: ${opp.gap > 0 ? '+' : ''}${opp.gap.toFixed(2)}%</span>
-                        <span>Vol: ${opp.relative_volume.toFixed(2)}x</span>
+    updateDisplayForSector() {
+        // Filter and render sectors based on selection
+        const sectorsToShow = this.currentSector === 'all' 
+            ? this.data.sectors 
+            : this.data.sectors.filter(sector => sector.name === this.currentSector);
+        
+        this.renderSectorsData(sectorsToShow);
+    }
+
+    formatNumber(num, decimals = 2) {
+        if (num >= 1000000000) {
+            return (num / 1000000000).toFixed(1) + 'B';
+        } else if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        } else if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toFixed(decimals);
+    }
+
+    formatChange(change, changePercent) {
+        const sign = change > 0 ? '+' : '';
+        const arrow = change > 0 ? '▲' : '▼';
+        const className = change > 0 ? 'positive' : 'negative';
+        
+        return {
+            sign,
+            arrow,
+            className,
+            changeText: `${sign}${change.toFixed(2)}`,
+            percentText: `${sign}${changePercent.toFixed(2)}%`
+        };
+    }
+
+    renderMarketOverview() {
+        const container = document.getElementById('marketCards');
+        container.innerHTML = this.data.indices.map(index => {
+            const change = this.formatChange(index.change, index.change_percent);
+            
+            return `
+                <div class="market-card" data-symbol="${index.symbol}">
+                    <div class="market-card__header">
+                        <span class="market-card__symbol">${index.symbol}</span>
+                        <span class="trend-arrow ${change.className}">${change.arrow}</span>
+                    </div>
+                    <div class="market-card__name">${index.name}</div>
+                    <div class="market-card__price">${this.formatNumber(index.price)}</div>
+                    <div class="market-card__change">
+                        <span class="change-value ${change.className}">${change.changeText}</span>
+                        <span class="change-percent ${change.className}">${change.percentText}</span>
+                    </div>
+                    <div class="market-card__details">
+                        <div>
+                            <div>High</div>
+                            <div>${this.formatNumber(index.high)}</div>
+                        </div>
+                        <div>
+                            <div>Low</div>
+                            <div>${this.formatNumber(index.low)}</div>
+                        </div>
+                        <div>
+                            <div>Volume</div>
+                            <div>${index.volume}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <button class="btn btn-sm" onclick="addToWatchlist('${opp.ticker}')">Add to Watchlist</button>
-        </div>
-    `).join('');
-}
-
-// Movers table
-function populateMoversTable() {
-    const tbody = document.getElementById('movers-tbody');
-    tbody.innerHTML = data.premarket_movers.map(mover => `
-        <tr>
-            <td><strong>${mover.ticker}</strong></td>
-            <td>$${mover.prev_close.toFixed(2)}</td>
-            <td>$${mover.premarket_price.toFixed(2)}</td>
-            <td class="${mover.change_pct >= 0 ? 'positive' : 'negative'}">
-                ${mover.change_pct >= 0 ? '+' : ''}${mover.change_pct.toFixed(2)}%
-            </td>
-            <td>${formatNumber(mover.volume)}</td>
-            <td>${mover.relative_volume.toFixed(2)}x</td>
-            <td>$${mover.market_cap_b.toFixed(1)}B</td>
-            <td>${mover.sector}</td>
-            <td>
-                <button class="btn btn-sm" onclick="viewOptionsChain('${mover.ticker}')">Options Chain</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Volatility data
-function populateVolatilityData() {
-    // Gap stocks
-    const gapUpList = document.getElementById('gap-up-list');
-    const gapDownList = document.getElementById('gap-down-list');
-    
-    const gapUp = data.premarket_movers.filter(m => m.change_pct > 2);
-    const gapDown = data.premarket_movers.filter(m => m.change_pct < -2);
-    
-    gapUpList.innerHTML = gapUp.map(stock => `
-        <div class="gap-item">
-            <span class="gap-ticker">${stock.ticker}</span>
-            <span class="gap-value positive">+${stock.change_pct.toFixed(2)}%</span>
-        </div>
-    `).join('');
-    
-    gapDownList.innerHTML = gapDown.map(stock => `
-        <div class="gap-item">
-            <span class="gap-ticker">${stock.ticker}</span>
-            <span class="gap-value negative">${stock.change_pct.toFixed(2)}%</span>
-        </div>
-    `).join('');
-    
-    // IV table
-    const ivTbody = document.getElementById('iv-tbody');
-    ivTbody.innerHTML = data.iv_data.map(iv => `
-        <tr>
-            <td><strong>${iv.ticker}</strong></td>
-            <td class="${getIVRankClass(iv.iv_rank)}">${iv.iv_rank}</td>
-            <td>${(iv.iv_current * 100).toFixed(1)}%</td>
-            <td>${(iv.iv_30day_avg * 100).toFixed(1)}%</td>
-            <td>${iv.iv_hv_ratio.toFixed(2)}</td>
-            <td>
-                <span class="status ${getIVStatusClass(iv.iv_rank)}">
-                    ${getIVStatus(iv.iv_rank)}
-                </span>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Catalysts
-function populateCatalysts() {
-    const catalystTimeline = document.getElementById('catalyst-timeline');
-    const sortedCatalysts = data.catalysts.sort((a, b) => {
-        const timeA = convertTimeToMinutes(a.time);
-        const timeB = convertTimeToMinutes(b.time);
-        return timeA - timeB;
-    });
-    
-    catalystTimeline.innerHTML = sortedCatalysts.map(catalyst => `
-        <div class="catalyst-item ${catalyst.impact.toLowerCase()}-impact">
-            <div class="catalyst-time">${catalyst.time}</div>
-            <div class="catalyst-content">
-                <span class="catalyst-ticker">${catalyst.ticker}</span>
-                <span class="catalyst-event">${catalyst.event}</span>
-                <span class="catalyst-impact impact-${catalyst.impact.toLowerCase()}">${catalyst.impact}</span>
-            </div>
-        </div>
-    `).join('');
-    
-    // Hot watchlist
-    const hotWatchlist = document.getElementById('hot-watchlist');
-    const hotTickers = getHotWatchlistTickers();
-    
-    hotWatchlist.innerHTML = hotTickers.map(ticker => `
-        <div class="watchlist-item">
-            <div>
-                <strong>${ticker.name}</strong>
-                <div style="font-size: 12px; color: #a7a9a9;">${ticker.catalysts.join(', ')}</div>
-            </div>
-            <button class="btn btn-sm btn-outline" onclick="addToWatchlist('${ticker.name}')">Watch</button>
-        </div>
-    `).join('');
-}
-
-// Technical analysis
-function populateTechnicalData() {
-    const technicalCards = document.getElementById('technical-cards');
-    
-    technicalCards.innerHTML = data.technical_data.map(tech => `
-        <div class="technical-card">
-            <div class="technical-header">
-                <div class="technical-ticker">${tech.ticker}</div>
-                <div class="technical-trend trend-${tech.trend.toLowerCase()}">${tech.trend}</div>
-            </div>
-            <div class="technical-metrics">
-                <div class="metric-item">
-                    <div class="metric-label">RSI</div>
-                    <div class="metric-value">${tech.rsi.toFixed(1)}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">MACD</div>
-                    <div class="metric-value">${tech.macd.toFixed(3)}</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">BB Position</div>
-                    <div class="metric-value">${(tech.bb_position * 100).toFixed(0)}%</div>
-                </div>
-                <div class="metric-item">
-                    <div class="metric-label">ATR</div>
-                    <div class="metric-value">${tech.atr.toFixed(2)}</div>
-                </div>
-            </div>
-            <div class="price-levels">
-                <div class="level-item">
-                    <span class="level-label">Support:</span>
-                    <span class="level-value">$${tech.support.toFixed(2)}</span>
-                </div>
-                <div class="level-item">
-                    <span class="level-label">Resistance:</span>
-                    <span class="level-value">$${tech.resistance.toFixed(2)}</span>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Options data
-function populateOptionsData() {
-    const optionsTbody = document.getElementById('options-tbody');
-    
-    optionsTbody.innerHTML = data.options_flow.map(flow => `
-        <tr>
-            <td><strong>${flow.ticker}</strong></td>
-            <td>${formatNumber(flow.call_volume)}</td>
-            <td>${formatNumber(flow.put_volume)}</td>
-            <td>${flow.put_call_ratio.toFixed(2)}</td>
-            <td>${formatNumber(flow.total_oi)}</td>
-            <td>
-                <span class="status status--${flow.unusual_activity.toLowerCase() === 'high' ? 'error' : 
-                    flow.unusual_activity.toLowerCase() === 'medium' ? 'warning' : 'info'}">
-                    ${flow.unusual_activity}
-                </span>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// Create Put/Call Ratio Chart
-function createPutCallRatioChart() {
-    const canvas = document.getElementById('pc-ratio-chart');
-    const ctx = canvas.getContext('2d');
-    
-    // Simple bar chart for P/C ratios
-    const tickers = data.options_flow.map(f => f.ticker);
-    const ratios = data.options_flow.map(f => f.put_call_ratio);
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Chart settings
-    const padding = 40;
-    const barWidth = (canvas.width - 2 * padding) / tickers.length;
-    const maxRatio = Math.max(...ratios);
-    const chartHeight = canvas.height - 2 * padding;
-    
-    // Draw bars
-    tickers.forEach((ticker, index) => {
-        const barHeight = (ratios[index] / maxRatio) * chartHeight;
-        const x = padding + index * barWidth;
-        const y = canvas.height - padding - barHeight;
-        
-        // Bar color based on ratio
-        ctx.fillStyle = ratios[index] > 0.8 ? '#f44336' : ratios[index] > 0.5 ? '#f7b924' : '#4caf50';
-        ctx.fillRect(x + 5, y, barWidth - 10, barHeight);
-        
-        // Ticker label
-        ctx.fillStyle = '#f5f5f5';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(ticker, x + barWidth / 2, canvas.height - 10);
-        
-        // Ratio value
-        ctx.fillText(ratios[index].toFixed(2), x + barWidth / 2, y - 5);
-    });
-    
-    // Y-axis labels
-    ctx.fillStyle = '#a7a9a9';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'right';
-    for (let i = 0; i <= 5; i++) {
-        const value = (maxRatio / 5) * i;
-        const y = canvas.height - padding - (i / 5) * chartHeight;
-        ctx.fillText(value.toFixed(1), padding - 10, y);
+            `;
+        }).join('');
     }
-}
 
-// Filters setup
-function setupFilters() {
-    // Strategy toggles
-    const toggles = document.querySelectorAll('.strategy-toggles input[type="checkbox"]');
-    toggles.forEach(toggle => {
-        toggle.addEventListener('change', updateFilteredResults);
-    });
-    
-    // Range sliders
-    const ranges = document.querySelectorAll('.range-filter input[type="range"]');
-    ranges.forEach(range => {
-        range.addEventListener('input', function() {
-            const valueSpan = this.parentElement.querySelector('span');
-            if (this.id === 'gap-filter') {
-                valueSpan.textContent = this.value + '%';
-            } else {
-                valueSpan.textContent = this.value;
-            }
-            updateFilteredResults();
-        });
-    });
-    
-    // Sector filter
-    document.getElementById('sector-filter').addEventListener('change', filterMoversTable);
-    document.getElementById('min-volume').addEventListener('input', filterMoversTable);
-    document.getElementById('market-cap-filter').addEventListener('change', filterMoversTable);
-    
-    // Initial filter update
-    updateFilteredResults();
-}
+    renderGainersLosers() {
+        // Render top gainers
+        const gainersContainer = document.getElementById('topGainers');
+        gainersContainer.innerHTML = this.data.top_gainers.map(stock => {
+            const change = this.formatChange(0, stock.change_percent);
+            
+            return `
+                <div class="stock-row">
+                    <div class="stock-symbol">${stock.symbol}</div>
+                    <div class="stock-name">${stock.name}</div>
+                    <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                    <div class="stock-change ${change.className}">${change.percentText}</div>
+                </div>
+            `;
+        }).join('');
 
-// Table sorting
-function setupTableSorting() {
-    const tables = document.querySelectorAll('.data-table');
-    tables.forEach(table => {
-        const headers = table.querySelectorAll('th[data-sort]');
-        headers.forEach(header => {
-            header.addEventListener('click', () => {
-                const sortKey = header.dataset.sort;
-                const tableId = table.id;
-                sortTable(tableId, sortKey);
+        // Render top losers
+        const losersContainer = document.getElementById('topLosers');
+        losersContainer.innerHTML = this.data.top_losers.map(stock => {
+            const change = this.formatChange(0, stock.change_percent);
+            
+            return `
+                <div class="stock-row">
+                    <div class="stock-symbol">${stock.symbol}</div>
+                    <div class="stock-name">${stock.name}</div>
+                    <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                    <div class="stock-change ${change.className}">${change.percentText}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderCurrencies() {
+        const container = document.getElementById('currencyCards');
+        container.innerHTML = this.data.currencies.map(currency => {
+            const change = this.formatChange(currency.change, currency.change_percent);
+            
+            return `
+                <div class="asset-card">
+                    <div class="asset-card__header">
+                        <div class="asset-name">${currency.pair}</div>
+                        <div class="trend-arrow ${change.className}">${change.arrow}</div>
+                    </div>
+                    <div class="asset-price">${currency.rate.toLocaleString()}</div>
+                    <div class="asset-change">
+                        <span class="${change.className}">${change.changeText}</span>
+                        <span class="${change.className}">(${change.percentText})</span>
+                    </div>
+                    <div class="asset-range">
+                        <small>H: ${currency.high.toLocaleString()} L: ${currency.low.toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderCommodities() {
+        const container = document.getElementById('commodityCards');
+        container.innerHTML = this.data.commodities.map(commodity => {
+            const change = this.formatChange(commodity.change, commodity.change_percent);
+            
+            return `
+                <div class="asset-card">
+                    <div class="asset-card__header">
+                        <div class="asset-name">${commodity.name}</div>
+                        <div class="trend-arrow ${change.className}">${change.arrow}</div>
+                    </div>
+                    <div class="asset-price">$${commodity.price.toFixed(2)} <small>${commodity.unit}</small></div>
+                    <div class="asset-change">
+                        <span class="${change.className}">${change.changeText}</span>
+                        <span class="${change.className}">(${change.percentText})</span>
+                    </div>
+                    <div class="asset-range">
+                        <small>H: $${commodity.high.toFixed(2)} L: $${commodity.low.toFixed(2)}</small>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderSectors() {
+        this.renderSectorsData(this.data.sectors);
+    }
+
+    renderSectorsData(sectors) {
+        const container = document.getElementById('sectorTable');
+        const highlightClass = this.currentSector !== 'all' ? 'style="background: rgba(50, 184, 198, 0.15);"' : '';
+        
+        container.innerHTML = `
+            <div class="sector-row" style="background: rgba(50, 184, 198, 0.1); font-weight: 600;">
+                <div class="sector-name">Sector</div>
+                <div class="sector-return">YTD Return</div>
+                <div class="sector-return">Monthly Return</div>
+                <div class="sector-return">Weight (%)</div>
+            </div>
+            ${sectors.map(sector => {
+                const ytdClass = sector.ytd_return > 0 ? 'positive' : 'negative';
+                const monthlyClass = sector.monthly_return > 0 ? 'positive' : 'negative';
+                
+                return `
+                    <div class="sector-row" ${highlightClass}>
+                        <div class="sector-name">${sector.name}</div>
+                        <div class="sector-return ${ytdClass}">${sector.ytd_return.toFixed(2)}%</div>
+                        <div class="sector-return ${monthlyClass}">${sector.monthly_return.toFixed(2)}%</div>
+                        <div class="sector-return">${sector.weight.toFixed(1)}%</div>
+                    </div>
+                `;
+            }).join('')}
+        `;
+    }
+
+    renderNews() {
+        const container = document.getElementById('newsFeed');
+        container.innerHTML = this.data.news.map(item => {
+            const timestamp = new Date(item.timestamp);
+            const timeString = timestamp.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
-        });
-    });
-}
+            
+            return `
+                <div class="news-item">
+                    <div class="news-headline">${item.headline}</div>
+                    <div class="news-summary">${item.summary}</div>
+                    <div class="news-meta">
+                        <span class="news-source">${item.source}</span>
+                        <span class="news-timestamp">${timeString}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
-function sortTable(tableId, sortKey) {
-    const table = document.getElementById(tableId);
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    // Determine sort direction
-    const isCurrentColumn = currentSortColumn === sortKey;
-    const direction = isCurrentColumn && currentSortDirection === 'asc' ? 'desc' : 'asc';
-    
-    // Update global sort state
-    currentSortColumn = sortKey;
-    currentSortDirection = direction;
-    
-    // Update header classes
-    const headers = table.querySelectorAll('th[data-sort]');
-    headers.forEach(h => {
-        h.classList.remove('sort-asc', 'sort-desc');
-        if (h.dataset.sort === sortKey) {
-            h.classList.add(`sort-${direction}`);
-        }
-    });
-    
-    // Sort rows
-    const sortedRows = rows.sort((a, b) => {
-        const aValue = getCellValue(a, sortKey);
-        const bValue = getCellValue(b, sortKey);
+    renderInvestmentInsights() {
+        const insights = this.data.investment_insights;
         
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-            return direction === 'asc' ? aValue - bValue : bValue - aValue;
-        } else {
-            return direction === 'asc' ? 
-                aValue.localeCompare(bValue) : 
-                bValue.localeCompare(aValue);
-        }
-    });
-    
-    // Re-append sorted rows
-    sortedRows.forEach(row => tbody.appendChild(row));
-}
+        // Render market outlook
+        const outlookContainer = document.getElementById('marketOutlook');
+        outlookContainer.innerHTML = `
+            <div class="outlook-sentiment">${insights.market_outlook.overall_sentiment}</div>
+            <h4 style="color: #10b981; margin-bottom: 12px;">Key Drivers</h4>
+            <ul class="outlook-list">
+                ${insights.market_outlook.key_drivers.map(driver => 
+                    `<li>${driver}</li>`
+                ).join('')}
+            </ul>
+            <h4 style="color: #ef4444; margin-bottom: 12px; margin-top: 20px;">Risk Factors</h4>
+            <ul class="outlook-list">
+                ${insights.market_outlook.risk_factors.map(risk => 
+                    `<li>${risk}</li>`
+                ).join('')}
+            </ul>
+        `;
 
-function getCellValue(row, sortKey) {
-    const cellIndex = {
-        'ticker': 0,
-        'prev_close': 1,
-        'premarket_price': 2,
-        'change_pct': 3,
-        'volume': 4,
-        'relative_volume': 5,
-        'market_cap_b': 6,
-        'sector': 7
-    }[sortKey];
-    
-    const cellText = row.cells[cellIndex].textContent.trim();
-    
-    // Parse numbers
-    if (sortKey === 'ticker' || sortKey === 'sector') {
-        return cellText;
-    } else {
-        return parseFloat(cellText.replace(/[$%,BK]/g, '')) || 0;
+        // Render recommendations
+        const recommendationsContainer = document.getElementById('recommendations');
+        recommendationsContainer.innerHTML = insights.actionable_recommendations.map(rec => {
+            const riskClass = rec.risk_level.toLowerCase().replace(/[\s-]/g, '');
+            
+            return `
+                <div class="recommendation-card">
+                    <div class="recommendation-title">${rec.strategy}</div>
+                    <div class="recommendation-description">${rec.description}</div>
+                    <div class="recommendation-meta">
+                        <span class="risk-level risk-${riskClass}">${rec.risk_level} Risk</span>
+                        <span class="time-horizon">${rec.time_horizon}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 }
 
-// Filter functions
-function filterMoversTable() {
-    const sectorFilter = document.getElementById('sector-filter').value;
-    const minVolume = parseInt(document.getElementById('min-volume').value) || 0;
-    const marketCapFilter = document.getElementById('market-cap-filter').value;
-    
-    const rows = document.querySelectorAll('#movers-tbody tr');
-    
-    rows.forEach(row => {
-        const ticker = row.cells[0].textContent.trim();
-        const mover = data.premarket_movers.find(m => m.ticker === ticker);
-        
-        let show = true;
-        
-        // Sector filter
-        if (sectorFilter && mover.sector !== sectorFilter) {
-            show = false;
-        }
-        
-        // Volume filter
-        if (mover.volume < minVolume) {
-            show = false;
-        }
-        
-        // Market cap filter
-        if (marketCapFilter) {
-            const marketCap = mover.market_cap_b;
-            if (marketCapFilter === 'large' && marketCap < 10) show = false;
-            if (marketCapFilter === 'mid' && (marketCap < 2 || marketCap > 10)) show = false;
-            if (marketCapFilter === 'small' && marketCap > 2) show = false;
-        }
-        
-        row.style.display = show ? '' : 'none';
-    });
-}
-
-function updateFilteredResults() {
-    const creditSpreads = document.getElementById('credit-spreads').checked;
-    const debitSpreads = document.getElementById('debit-spreads').checked;
-    const nakedOptions = document.getElementById('naked-options').checked;
-    
-    const ivRankMin = parseInt(document.getElementById('iv-rank-filter').value);
-    const liquidityMin = parseInt(document.getElementById('liquidity-filter').value);
-    const gapMin = parseFloat(document.getElementById('gap-filter').value);
-    
-    const results = identifyHighProbabilitySetups(ivRankMin, liquidityMin, gapMin);
-    const filteredResults = document.getElementById('filtered-results');
-    
-    filteredResults.innerHTML = results.map(result => `
-        <div class="setup-card">
-            <div class="setup-ticker">${result.ticker}</div>
-            <div class="setup-metrics">
-                <div class="setup-metric">
-                    <span>IV Rank:</span>
-                    <span>${result.iv_rank}</span>
-                </div>
-                <div class="setup-metric">
-                    <span>Gap:</span>
-                    <span class="${result.gap >= 0 ? 'positive' : 'negative'}">
-                        ${result.gap >= 0 ? '+' : ''}${result.gap.toFixed(2)}%
-                    </span>
-                </div>
-                <div class="setup-metric">
-                    <span>Rel Vol:</span>
-                    <span>${result.relative_volume.toFixed(2)}x</span>
-                </div>
-                <div class="setup-metric">
-                    <span>Liquidity:</span>
-                    <span>${result.liquidity_score}</span>
-                </div>
-            </div>
-            <div class="setup-strategies">
-                ${creditSpreads ? '<span class="strategy-tag">Credit Spread</span>' : ''}
-                ${debitSpreads ? '<span class="strategy-tag">Debit Spread</span>' : ''}
-                ${nakedOptions ? '<span class="strategy-tag">Naked Option</span>' : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
-// Utility functions
-function identifyHighProbabilitySetups(ivRankMin = 50, liquidityMin = 75, gapMin = 2) {
-    const setups = [];
-    
-    data.premarket_movers.forEach(mover => {
-        const ivData = data.iv_data.find(iv => iv.ticker === mover.ticker);
-        const catalyst = data.catalysts.find(c => c.ticker === mover.ticker);
-        
-        if (ivData && Math.abs(mover.change_pct) >= gapMin && ivData.iv_rank >= ivRankMin) {
-            setups.push({
-                ticker: mover.ticker,
-                gap: mover.change_pct,
-                iv_rank: ivData.iv_rank,
-                relative_volume: mover.relative_volume,
-                liquidity_score: calculateLiquidityScore(mover.ticker),
-                has_catalyst: !!catalyst
-            });
-        }
-    });
-    
-    return setups.filter(s => s.liquidity_score >= liquidityMin);
-}
-
-function calculateLiquidityScore(ticker) {
-    const optionsData = data.options_flow.find(o => o.ticker === ticker);
-    if (!optionsData) return 50;
-    
-    // Simple liquidity score based on volume and open interest
-    const volumeScore = Math.min(optionsData.total_volume / 1000, 50);
-    const oiScore = Math.min(optionsData.total_oi / 2000, 50);
-    
-    return Math.round(volumeScore + oiScore);
-}
-
-function getHotWatchlistTickers() {
-    const tickerCatalysts = {};
-    
-    data.catalysts.forEach(catalyst => {
-        if (!tickerCatalysts[catalyst.ticker]) {
-            tickerCatalysts[catalyst.ticker] = [];
-        }
-        tickerCatalysts[catalyst.ticker].push(catalyst.event);
-    });
-    
-    return Object.entries(tickerCatalysts)
-        .filter(([ticker, catalysts]) => catalysts.length > 1 || 
-            data.catalysts.find(c => c.ticker === ticker && c.impact === 'High'))
-        .map(([ticker, catalysts]) => ({
-            name: ticker,
-            catalysts: catalysts
-        }));
-}
-
-function getIVRankClass(ivRank) {
-    if (ivRank > 70) return 'negative';
-    if (ivRank > 50) return 'warning';
-    return 'positive';
-}
-
-function getIVStatusClass(ivRank) {
-    if (ivRank > 70) return 'status--error';
-    if (ivRank > 50) return 'status--warning';
-    return 'status--success';
-}
-
-function getIVStatus(ivRank) {
-    if (ivRank > 70) return 'High';
-    if (ivRank > 50) return 'Medium';
-    return 'Low';
-}
-
-function convertTimeToMinutes(timeString) {
-    const [time, meridian] = timeString.split(' ');
-    const [hours, minutes] = time.split(':').map(Number);
-    let totalMinutes = hours * 60 + minutes;
-    
-    if (meridian === 'PM' && hours !== 12) {
-        totalMinutes += 12 * 60;
-    } else if (meridian === 'AM' && hours === 12) {
-        totalMinutes -= 12 * 60;
-    }
-    
-    return totalMinutes;
-}
-
-function formatNumber(num) {
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toString();
-}
-
-// Interactive functions
-function viewOptionsChain(ticker) {
-    showAlert(`Opening options chain for ${ticker}`, 'info');
-    // In a real application, this would open the options chain
-}
-
-function addToWatchlist(ticker) {
-    showAlert(`${ticker} added to watchlist`, 'success');
-    // In a real application, this would add to user's watchlist
-}
-
-function showAlert(message, type = 'info') {
-    const alertContainer = document.getElementById('alert-container');
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
-    alert.textContent = message;
-    
-    alertContainer.appendChild(alert);
-    
-    // Remove alert after 3 seconds
-    setTimeout(() => {
-        alert.remove();
-    }, 3000);
-}
+// Initialize the dashboard when the DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new MarketDashboard();
+});
