@@ -8,6 +8,8 @@ class PremarketDashboard {
         this.lastSyncTime = null;
         this.retryAttempts = 3;
         this.currentRetryCount = 0;
+        this.ws = null;
+        this.reconnectTimeout = null;
         
         // Sample data from the provided JSON
         this.sampleData = {
@@ -200,6 +202,7 @@ class PremarketDashboard {
         this.loadInitialData();
         this.startMarketCountdown();
         this.startAutoRefresh();
+        this.connectWebSocket();
         
         // Show initial status
         this.updateConnectionStatus('connected');
@@ -892,11 +895,59 @@ class PremarketDashboard {
 
     formatTime(timestamp) {
         const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: true 
+            hour12: true
         });
+    }
+
+    connectWebSocket() {
+        const url = 'ws://localhost:8081';
+        if (this.ws) {
+            this.ws.close();
+        }
+        this.ws = new WebSocket(url);
+
+        this.ws.addEventListener('open', () => {
+            this.updateConnectionStatus('connected');
+            this.showToast('success', 'WebSocket', 'Streaming live data');
+        });
+
+        this.ws.addEventListener('message', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                this.handleWebSocketData(data);
+            } catch (err) {
+                console.error('Invalid WS message', err);
+            }
+        });
+
+        this.ws.addEventListener('close', () => {
+            this.updateConnectionStatus('error');
+            this.showToast('warning', 'WebSocket', 'Reconnecting...');
+            if (!this.reconnectTimeout) {
+                this.reconnectTimeout = setTimeout(() => {
+                    this.reconnectTimeout = null;
+                    this.connectWebSocket();
+                }, 3000);
+            }
+        });
+
+        this.ws.addEventListener('error', () => {
+            this.updateConnectionStatus('error');
+        });
+    }
+
+    handleWebSocketData(data) {
+        if (data.module === 'options_heatmap' && data.data) {
+            this.sampleData.options_flow.put_call_ratio = parseFloat(data.data.put_call_ratio);
+            this.sampleData.options_flow.dark_pool_activity = data.data.dark_pool_activity;
+            if (Array.isArray(data.data.unusual_activity)) {
+                this.sampleData.options_flow.unusual_activity = data.data.unusual_activity;
+            }
+            this.loadOptionsData();
+        }
     }
 
     getIVRankClass(rank) {
