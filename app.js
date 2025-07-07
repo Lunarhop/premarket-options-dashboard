@@ -1,512 +1,923 @@
-// Market Dashboard Application
-class MarketDashboard {
+// Premarket Options Intelligence Dashboard - Main Application
+class PremarketDashboard {
     constructor() {
-        this.currentPeriod = '1D';
-        this.currentSector = 'all';
-        this.data = this.getMarketData();
+        this.isLoading = false;
+        this.autoRefreshEnabled = true;
+        this.refreshInterval = 30;
+        this.autoRefreshTimer = null;
+        this.lastSyncTime = null;
+        this.retryAttempts = 3;
+        this.currentRetryCount = 0;
+        
+        // Sample data from the provided JSON
+        this.sampleData = {
+            "premarket_movers": {
+                "gainers": [
+                    {
+                        "symbol": "AAPL",
+                        "price": 195.50,
+                        "change": 4.25,
+                        "change_percent": 2.22,
+                        "volume": 125000,
+                        "avg_volume": 45000,
+                        "relative_volume": 2.78,
+                        "market_cap": "3.1T",
+                        "sector": "Technology",
+                        "optionable": true,
+                        "options_chain_link": "/options/AAPL"
+                    },
+                    {
+                        "symbol": "TSLA",
+                        "price": 245.80,
+                        "change": 8.90,
+                        "change_percent": 3.76,
+                        "volume": 89000,
+                        "avg_volume": 52000,
+                        "relative_volume": 1.71,
+                        "market_cap": "780.5B",
+                        "sector": "Consumer Discretionary",
+                        "optionable": true,
+                        "options_chain_link": "/options/TSLA"
+                    },
+                    {
+                        "symbol": "NVDA",
+                        "price": 875.30,
+                        "change": 23.45,
+                        "change_percent": 2.75,
+                        "volume": 78000,
+                        "avg_volume": 35000,
+                        "relative_volume": 2.23,
+                        "market_cap": "2.1T",
+                        "sector": "Technology",
+                        "optionable": true,
+                        "options_chain_link": "/options/NVDA"
+                    }
+                ],
+                "losers": [
+                    {
+                        "symbol": "META",
+                        "price": 485.20,
+                        "change": -12.40,
+                        "change_percent": -2.49,
+                        "volume": 67000,
+                        "avg_volume": 41000,
+                        "relative_volume": 1.63,
+                        "market_cap": "1.2T",
+                        "sector": "Communication Services",
+                        "optionable": true,
+                        "options_chain_link": "/options/META"
+                    },
+                    {
+                        "symbol": "AMZN",
+                        "price": 142.80,
+                        "change": -4.15,
+                        "change_percent": -2.83,
+                        "volume": 54000,
+                        "avg_volume": 38000,
+                        "relative_volume": 1.42,
+                        "market_cap": "1.5T",
+                        "sector": "Consumer Discretionary",
+                        "optionable": true,
+                        "options_chain_link": "/options/AMZN"
+                    }
+                ]
+            },
+            "gap_volatility": {
+                "gap_up": [
+                    {
+                        "symbol": "NVDA",
+                        "gap_percent": 3.45,
+                        "iv_rank": 68,
+                        "iv_crush_potential": "Medium",
+                        "liquidity_score": 95,
+                        "bid_ask_spread": 0.15,
+                        "open_interest": 125000
+                    },
+                    {
+                        "symbol": "AMD",
+                        "gap_percent": 2.8,
+                        "iv_rank": 72,
+                        "iv_crush_potential": "Low",
+                        "liquidity_score": 82,
+                        "bid_ask_spread": 0.08,
+                        "open_interest": 89000
+                    }
+                ],
+                "gap_down": [
+                    {
+                        "symbol": "AMZN",
+                        "gap_percent": -2.8,
+                        "iv_rank": 72,
+                        "iv_crush_potential": "High",
+                        "liquidity_score": 88,
+                        "bid_ask_spread": 0.25,
+                        "open_interest": 89000
+                    }
+                ]
+            },
+            "catalysts": {
+                "earnings_today": ["AAPL", "GOOGL", "MSFT"],
+                "earnings_tomorrow": ["AMZN", "TSLA"],
+                "news_events": [
+                    {
+                        "symbol": "AAPL",
+                        "headline": "Apple Reports Q4 Earnings Beat",
+                        "impact": "Positive",
+                        "timestamp": "2025-06-20T06:30:00Z"
+                    },
+                    {
+                        "symbol": "TSLA",
+                        "headline": "Tesla Announces New Gigafactory",
+                        "impact": "Positive", 
+                        "timestamp": "2025-06-20T05:45:00Z"
+                    }
+                ],
+                "macro_events": [
+                    {
+                        "event": "CPI Release",
+                        "time": "08:30 EST",
+                        "impact": "High",
+                        "expected": "2.4%"
+                    },
+                    {
+                        "event": "Fed Chair Speech",
+                        "time": "14:00 EST", 
+                        "impact": "Medium",
+                        "expected": "Hawkish"
+                    }
+                ]
+            },
+            "technical_data": {
+                "AAPL": {
+                    "rsi": 65.4,
+                    "macd": "Bullish",
+                    "bollinger": "Above Upper",
+                    "atr": 3.25,
+                    "support": 190.00,
+                    "resistance": 200.00
+                },
+                "TSLA": {
+                    "rsi": 58.2,
+                    "macd": "Neutral",
+                    "bollinger": "Middle Band",
+                    "atr": 12.45,
+                    "support": 235.00,
+                    "resistance": 255.00
+                }
+            },
+            "options_flow": {
+                "unusual_activity": [
+                    {
+                        "symbol": "AAPL",
+                        "type": "Call",
+                        "strike": 200,
+                        "expiry": "2025-07-18",
+                        "volume": 15000,
+                        "oi_change": 5000,
+                        "premium": "Unusual High"
+                    }
+                ],
+                "put_call_ratio": 0.85,
+                "dark_pool_activity": "Above Average"
+            }
+        };
+
+        this.errorPatterns = [
+            { type: 'rate_limit', probability: 0.1, message: 'API rate limit exceeded. Retrying automatically.' },
+            { type: 'network_timeout', probability: 0.05, message: 'Connection timeout. Retrying automatically.' },
+            { type: 'server_error', probability: 0.03, message: 'Data provider temporarily unavailable.' },
+            { type: 'auth_error', probability: 0.02, message: 'Authentication error. Please check settings.' }
+        ];
+
+        // Initialize the dashboard
         this.init();
     }
 
-    // Market data from the provided JSON
-    getMarketData() {
-        return {
-            "timestamp": "2025-06-18",
-            "last_updated": "2025-06-18T21:30:00Z",
-            "indices": [
-                {
-                    "symbol": "SPX",
-                    "name": "S&P 500", 
-                    "price": 6003.91,
-                    "change": 21.19,
-                    "change_percent": 0.35,
-                    "high": 6018.25,
-                    "low": 5980.68,
-                    "volume": "3.2B"
-                },
-                {
-                    "symbol": "DJI",
-                    "name": "Dow Jones",
-                    "price": 42343.04,
-                    "change": 127.24,
-                    "change_percent": 0.30,
-                    "high": 42510.07,
-                    "low": 42195.38,
-                    "volume": "467M"
-                },
-                {
-                    "symbol": "IXIC",
-                    "name": "NASDAQ",
-                    "price": 19616.11,
-                    "change": 95.02,
-                    "change_percent": 0.49,
-                    "high": 19660.77,
-                    "low": 19489.56,
-                    "volume": "4.1B"
-                }
-            ],
-            "top_gainers": [
-                {"symbol": "INTC", "name": "Intel Corp", "price": 21.53, "change_percent": 3.51},
-                {"symbol": "TSLA", "name": "Tesla Inc", "price": 327.02, "change_percent": 3.27},
-                {"symbol": "ADI", "name": "Analog Devices", "price": 232.03, "change_percent": 1.91},
-                {"symbol": "REGN", "name": "Regeneron Pharmaceuticals", "price": 517.85, "change_percent": 1.77},
-                {"symbol": "CHTR", "name": "Charter Communications", "price": 379.49, "change_percent": 1.56}
-            ],
-            "top_losers": [
-                {"symbol": "V", "name": "Visa Inc", "price": 349.82, "change_percent": -2.26},
-                {"symbol": "DOW", "name": "Dow Inc", "price": 28.94, "change_percent": -1.70},
-                {"symbol": "DIS", "name": "Walt Disney Co", "price": 117.29, "change_percent": -0.75},
-                {"symbol": "JNJ", "name": "Johnson & Johnson", "price": 151.28, "change_percent": -0.72},
-                {"symbol": "MCD", "name": "McDonald's Corp", "price": 290.59, "change_percent": -0.60}
-            ],
-            "currencies": [
-                {
-                    "pair": "EUR/USD",
-                    "rate": 1.1508,
-                    "change": -0.0060,
-                    "change_percent": -0.52,
-                    "high": 1.1589,
-                    "low": 1.1474
-                },
-                {
-                    "pair": "BTC/USD",
-                    "rate": 104725,
-                    "change": -1469,
-                    "change_percent": -1.38,
-                    "high": 106210,
-                    "low": 103597
-                }
-            ],
-            "commodities": [
-                {
-                    "symbol": "GOLD",
-                    "name": "Gold",
-                    "price": 3394.70,
-                    "unit": "USD/oz",
-                    "change": -13.40,
-                    "change_percent": -0.39,
-                    "high": 3405.20,
-                    "low": 3386.30
-                },
-                {
-                    "symbol": "SILVER", 
-                    "name": "Silver",
-                    "price": 36.74,
-                    "unit": "USD/oz",
-                    "change": -0.17,
-                    "change_percent": -0.46,
-                    "high": 36.82,
-                    "low": 36.69
-                },
-                {
-                    "symbol": "COPPER",
-                    "name": "Copper",
-                    "price": 4.849,
-                    "unit": "USD/lb",
-                    "change": -0.0040,
-                    "change_percent": -0.08,
-                    "high": 4.8685,
-                    "low": 4.8475
-                }
-            ],
-            "sectors": [
-                {"name": "Technology", "ytd_return": 5.09, "monthly_return": 9.97, "weight": 31.6},
-                {"name": "Communication Services", "ytd_return": 7.07, "monthly_return": 7.3, "weight": 9.6},
-                {"name": "Industrials", "ytd_return": 8.2, "monthly_return": 8.84, "weight": 8.7},
-                {"name": "Energy", "ytd_return": 3.47, "monthly_return": -13.0, "weight": 3.0},
-                {"name": "Utilities", "ytd_return": 6.2, "monthly_return": 0.4, "weight": 2.5},
-                {"name": "Financials", "ytd_return": 3.9, "monthly_return": 0.1, "weight": 14.3},
-                {"name": "Consumer Discretionary", "ytd_return": -6.3, "monthly_return": -3.7, "weight": 10.6},
-                {"name": "Health Care", "ytd_return": -4.7, "monthly_return": -9.1, "weight": 9.6},
-                {"name": "Consumer Staples", "ytd_return": 3.15, "monthly_return": 3.1, "weight": 5.9},
-                {"name": "Materials", "ytd_return": -2.3, "monthly_return": -7.5, "weight": 1.9},
-                {"name": "Real Estate", "ytd_return": 15.9, "monthly_return": -5.5, "weight": 2.1}
-            ],
-            "news": [
-                {
-                    "headline": "Fed Holds Rates Steady, Forecasts Two Cuts This Year",
-                    "summary": "Federal Reserve maintains current interest rates amid Middle East tensions, but signals potential for two rate cuts by year end.",
-                    "timestamp": "2025-06-18T16:00:00Z",
-                    "source": "MarketWatch"
-                },
-                {
-                    "headline": "Middle East Tensions Drive Market Volatility",
-                    "summary": "Escalating Israel-Iran tensions push gold and oil prices higher while weighing on equity markets.",
-                    "timestamp": "2025-06-18T14:30:00Z",
-                    "source": "Barron's"
-                },
-                {
-                    "headline": "Technology Sector Leads Market Recovery", 
-                    "summary": "Tech stocks rebound with 5.09% gains as AI spending continues to drive investor optimism.",
-                    "timestamp": "2025-06-18T13:15:00Z",
-                    "source": "Reuters"
-                },
-                {
-                    "headline": "Energy Sector Emerges as New Market Leader",
-                    "summary": "Energy stocks climb 3.47% as sector rotation begins amid commodity price strength.",
-                    "timestamp": "2025-06-18T12:00:00Z",
-                    "source": "Bloomberg"
-                }
-            ],
-            "investment_insights": {
-                "market_outlook": {
-                    "overall_sentiment": "Cautiously Optimistic",
-                    "key_drivers": [
-                        "Fed maintaining accommodative stance with potential rate cuts",
-                        "Technology sector showing resilience despite valuations", 
-                        "Geopolitical tensions creating volatility opportunities",
-                        "Sector rotation from growth to value continuing"
-                    ],
-                    "risk_factors": [
-                        "Middle East tensions affecting energy and safe-haven assets",
-                        "Inflation persistence despite cooling trends",
-                        "Trade policy uncertainties with tariff implications",
-                        "Corporate earnings pressure in some sectors"
-                    ]
-                },
-                "actionable_recommendations": [
-                    {
-                        "strategy": "Sector Rotation Play",
-                        "description": "Consider rotating from overvalued tech positions into undervalued energy and utilities",
-                        "risk_level": "Medium",
-                        "time_horizon": "3-6 months"
-                    },
-                    {
-                        "strategy": "Safe Haven Diversification",
-                        "description": "Increase gold allocation as hedge against geopolitical risks",
-                        "risk_level": "Low",
-                        "time_horizon": "6-12 months"
-                    },
-                    {
-                        "strategy": "Currency Hedging",
-                        "description": "Consider EUR/USD volatility trades given ECB policy divergence",
-                        "risk_level": "High",
-                        "time_horizon": "1-3 months"
-                    },
-                    {
-                        "strategy": "Quality Growth Focus",
-                        "description": "Focus on large-cap tech stocks with strong fundamentals and AI exposure",
-                        "risk_level": "Medium-High",
-                        "time_horizon": "12+ months"
-                    }
-                ]
-            }
-        };
-    }
-
     init() {
-        this.updateTime();
-        this.updateLastUpdated();
         this.setupEventListeners();
-        this.renderMarketOverview();
-        this.renderGainersLosers();
-        this.renderCurrencies();
-        this.renderCommodities();
-        this.renderSectors();
-        this.renderNews();
-        this.renderInvestmentInsights();
+        this.setupTabs();
+        this.setupSettings();
+        this.loadInitialData();
+        this.startMarketCountdown();
+        this.startAutoRefresh();
         
-        // Update time every second
-        setInterval(() => this.updateTime(), 1000);
-    }
-
-    updateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        document.getElementById('currentTime').textContent = timeString;
-    }
-
-    updateLastUpdated() {
-        const lastUpdated = new Date(this.data.last_updated);
-        const timeString = lastUpdated.toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        document.getElementById('lastUpdated').textContent = timeString;
+        // Show initial status
+        this.updateConnectionStatus('connected');
+        this.updateLastSyncTime('Never');
     }
 
     setupEventListeners() {
-        // Time period filters
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.currentPeriod = e.target.dataset.period;
-                this.updateDisplayForPeriod();
+        // Main sync button
+        const syncButton = document.getElementById('syncButton');
+        syncButton.addEventListener('click', () => this.performSync());
+
+        // Settings toggle
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsPanel = document.getElementById('settingsPanel');
+        settingsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsPanel.classList.toggle('hidden');
+        });
+
+        // Close settings when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!settingsPanel.contains(e.target) && !settingsToggle.contains(e.target)) {
+                settingsPanel.classList.add('hidden');
+            }
+        });
+
+        // Auto-refresh toggle
+        const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+        autoRefreshToggle.addEventListener('change', (e) => {
+            this.autoRefreshEnabled = e.target.checked;
+            if (this.autoRefreshEnabled) {
+                this.startAutoRefresh();
+            } else {
+                this.stopAutoRefresh();
+            }
+        });
+
+        // Refresh interval change
+        const refreshInterval = document.getElementById('refreshInterval');
+        refreshInterval.addEventListener('change', (e) => {
+            this.refreshInterval = parseInt(e.target.value);
+            if (this.autoRefreshEnabled) {
+                this.startAutoRefresh();
+            }
+        });
+
+        // Module-specific refresh buttons
+        document.querySelectorAll('.module-refresh').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const module = e.target.closest('[data-module]')?.dataset.module || 
+                             e.target.dataset.module;
+                if (module) {
+                    this.refreshModule(module);
+                }
             });
         });
 
-        // Sector filter
-        document.getElementById('sectorFilter').addEventListener('change', (e) => {
-            this.currentSector = e.target.value;
-            this.updateDisplayForSector();
+        // Technical symbol selector
+        const technicalSymbolSelect = document.getElementById('technicalSymbolSelect');
+        technicalSymbolSelect.addEventListener('change', (e) => {
+            this.updateTechnicalData(e.target.value);
         });
     }
 
-    updateDisplayForPeriod() {
-        // In a real app, this would fetch different data based on the period
-        // For now, we'll just add a visual indication that the filter is working
-        const marketCards = document.querySelectorAll('.market-card');
-        marketCards.forEach(card => {
-            card.style.opacity = '0.7';
-            setTimeout(() => {
-                card.style.opacity = '1';
-            }, 200);
-        });
-    }
-
-    updateDisplayForSector() {
-        // Filter and render sectors based on selection
-        const sectorsToShow = this.currentSector === 'all' 
-            ? this.data.sectors 
-            : this.data.sectors.filter(sector => sector.name === this.currentSector);
-        
-        this.renderSectorsData(sectorsToShow);
-    }
-
-    formatNumber(num, decimals = 2) {
-        if (num >= 1000000000) {
-            return (num / 1000000000).toFixed(1) + 'B';
-        } else if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toFixed(decimals);
-    }
-
-    formatChange(change, changePercent) {
-        const sign = change > 0 ? '+' : '';
-        const arrow = change > 0 ? '▲' : '▼';
-        const className = change > 0 ? 'positive' : 'negative';
-        
-        return {
-            sign,
-            arrow,
-            className,
-            changeText: `${sign}${change.toFixed(2)}`,
-            percentText: `${sign}${changePercent.toFixed(2)}%`
-        };
-    }
-
-    renderMarketOverview() {
-        const container = document.getElementById('marketCards');
-        container.innerHTML = this.data.indices.map(index => {
-            const change = this.formatChange(index.change, index.change_percent);
-            
-            return `
-                <div class="market-card" data-symbol="${index.symbol}">
-                    <div class="market-card__header">
-                        <span class="market-card__symbol">${index.symbol}</span>
-                        <span class="trend-arrow ${change.className}">${change.arrow}</span>
-                    </div>
-                    <div class="market-card__name">${index.name}</div>
-                    <div class="market-card__price">${this.formatNumber(index.price)}</div>
-                    <div class="market-card__change">
-                        <span class="change-value ${change.className}">${change.changeText}</span>
-                        <span class="change-percent ${change.className}">${change.percentText}</span>
-                    </div>
-                    <div class="market-card__details">
-                        <div>
-                            <div>High</div>
-                            <div>${this.formatNumber(index.high)}</div>
-                        </div>
-                        <div>
-                            <div>Low</div>
-                            <div>${this.formatNumber(index.low)}</div>
-                        </div>
-                        <div>
-                            <div>Volume</div>
-                            <div>${index.volume}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    renderGainersLosers() {
-        // Render top gainers
-        const gainersContainer = document.getElementById('topGainers');
-        gainersContainer.innerHTML = this.data.top_gainers.map(stock => {
-            const change = this.formatChange(0, stock.change_percent);
-            
-            return `
-                <div class="stock-row">
-                    <div class="stock-symbol">${stock.symbol}</div>
-                    <div class="stock-name">${stock.name}</div>
-                    <div class="stock-price">$${stock.price.toFixed(2)}</div>
-                    <div class="stock-change ${change.className}">${change.percentText}</div>
-                </div>
-            `;
-        }).join('');
-
-        // Render top losers
-        const losersContainer = document.getElementById('topLosers');
-        losersContainer.innerHTML = this.data.top_losers.map(stock => {
-            const change = this.formatChange(0, stock.change_percent);
-            
-            return `
-                <div class="stock-row">
-                    <div class="stock-symbol">${stock.symbol}</div>
-                    <div class="stock-name">${stock.name}</div>
-                    <div class="stock-price">$${stock.price.toFixed(2)}</div>
-                    <div class="stock-change ${change.className}">${change.percentText}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    renderCurrencies() {
-        const container = document.getElementById('currencyCards');
-        container.innerHTML = this.data.currencies.map(currency => {
-            const change = this.formatChange(currency.change, currency.change_percent);
-            
-            return `
-                <div class="asset-card">
-                    <div class="asset-card__header">
-                        <div class="asset-name">${currency.pair}</div>
-                        <div class="trend-arrow ${change.className}">${change.arrow}</div>
-                    </div>
-                    <div class="asset-price">${currency.rate.toLocaleString()}</div>
-                    <div class="asset-change">
-                        <span class="${change.className}">${change.changeText}</span>
-                        <span class="${change.className}">(${change.percentText})</span>
-                    </div>
-                    <div class="asset-range">
-                        <small>H: ${currency.high.toLocaleString()} L: ${currency.low.toLocaleString()}</small>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    renderCommodities() {
-        const container = document.getElementById('commodityCards');
-        container.innerHTML = this.data.commodities.map(commodity => {
-            const change = this.formatChange(commodity.change, commodity.change_percent);
-            
-            return `
-                <div class="asset-card">
-                    <div class="asset-card__header">
-                        <div class="asset-name">${commodity.name}</div>
-                        <div class="trend-arrow ${change.className}">${change.arrow}</div>
-                    </div>
-                    <div class="asset-price">$${commodity.price.toFixed(2)} <small>${commodity.unit}</small></div>
-                    <div class="asset-change">
-                        <span class="${change.className}">${change.changeText}</span>
-                        <span class="${change.className}">(${change.percentText})</span>
-                    </div>
-                    <div class="asset-range">
-                        <small>H: $${commodity.high.toFixed(2)} L: $${commodity.low.toFixed(2)}</small>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    renderSectors() {
-        this.renderSectorsData(this.data.sectors);
-    }
-
-    renderSectorsData(sectors) {
-        const container = document.getElementById('sectorTable');
-        const highlightClass = this.currentSector !== 'all' ? 'style="background: rgba(50, 184, 198, 0.15);"' : '';
-        
-        container.innerHTML = `
-            <div class="sector-row" style="background: rgba(50, 184, 198, 0.1); font-weight: 600;">
-                <div class="sector-name">Sector</div>
-                <div class="sector-return">YTD Return</div>
-                <div class="sector-return">Monthly Return</div>
-                <div class="sector-return">Weight (%)</div>
-            </div>
-            ${sectors.map(sector => {
-                const ytdClass = sector.ytd_return > 0 ? 'positive' : 'negative';
-                const monthlyClass = sector.monthly_return > 0 ? 'positive' : 'negative';
+    setupTabs() {
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                const module = e.target.closest('.dashboard__module');
                 
-                return `
-                    <div class="sector-row" ${highlightClass}>
-                        <div class="sector-name">${sector.name}</div>
-                        <div class="sector-return ${ytdClass}">${sector.ytd_return.toFixed(2)}%</div>
-                        <div class="sector-return ${monthlyClass}">${sector.monthly_return.toFixed(2)}%</div>
-                        <div class="sector-return">${sector.weight.toFixed(1)}%</div>
-                    </div>
-                `;
-            }).join('')}
-        `;
-    }
-
-    renderNews() {
-        const container = document.getElementById('newsFeed');
-        container.innerHTML = this.data.news.map(item => {
-            const timestamp = new Date(item.timestamp);
-            const timeString = timestamp.toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                // Update active tab button
+                module.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Update active tab content
+                module.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                module.querySelector(`#${tabName}Tab`).classList.add('active');
             });
-            
-            return `
-                <div class="news-item">
-                    <div class="news-headline">${item.headline}</div>
-                    <div class="news-summary">${item.summary}</div>
-                    <div class="news-meta">
-                        <span class="news-source">${item.source}</span>
-                        <span class="news-timestamp">${timeString}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        });
     }
 
-    renderInvestmentInsights() {
-        const insights = this.data.investment_insights;
+    setupSettings() {
+        // Initialize settings from localStorage if available
+        const savedSettings = this.loadSettings();
+        if (savedSettings) {
+            this.autoRefreshEnabled = savedSettings.autoRefresh;
+            this.refreshInterval = savedSettings.refreshInterval;
+            
+            document.getElementById('autoRefreshToggle').checked = this.autoRefreshEnabled;
+            document.getElementById('refreshInterval').value = this.refreshInterval;
+        }
+    }
+
+    loadSettings() {
+        try {
+            // Since we can't use localStorage, return default settings
+            return {
+                autoRefresh: true,
+                refreshInterval: 30
+            };
+        } catch (error) {
+            console.warn('Could not load settings:', error);
+            return null;
+        }
+    }
+
+    async performSync() {
+        if (this.isLoading) return;
         
-        // Render market outlook
-        const outlookContainer = document.getElementById('marketOutlook');
-        outlookContainer.innerHTML = `
-            <div class="outlook-sentiment">${insights.market_outlook.overall_sentiment}</div>
-            <h4 style="color: #10b981; margin-bottom: 12px;">Key Drivers</h4>
-            <ul class="outlook-list">
-                ${insights.market_outlook.key_drivers.map(driver => 
-                    `<li>${driver}</li>`
-                ).join('')}
-            </ul>
-            <h4 style="color: #ef4444; margin-bottom: 12px; margin-top: 20px;">Risk Factors</h4>
-            <ul class="outlook-list">
-                ${insights.market_outlook.risk_factors.map(risk => 
-                    `<li>${risk}</li>`
-                ).join('')}
-            </ul>
+        this.isLoading = true;
+        this.currentRetryCount = 0;
+        
+        // Update sync button state
+        this.updateSyncButton('syncing');
+        this.updateConnectionStatus('syncing');
+        
+        try {
+            await this.syncAllModules();
+            this.updateSyncButton('success');
+            this.updateConnectionStatus('connected');
+            this.updateLastSyncTime(new Date());
+            this.showToast('success', 'Sync Complete', 'All modules updated successfully');
+            
+            // Reset to normal state after success indication
+            setTimeout(() => {
+                if (!this.isLoading) {
+                    this.updateSyncButton('idle');
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Sync failed:', error);
+            this.updateSyncButton('error');
+            this.updateConnectionStatus('error');
+            this.showToast('error', 'Sync Failed', error.message || 'Failed to update data');
+            
+            // Reset to normal state after error indication
+            setTimeout(() => {
+                if (!this.isLoading) {
+                    this.updateSyncButton('idle');
+                    this.updateConnectionStatus('connected');
+                }
+            }, 3000);
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async syncAllModules() {
+        const modules = [
+            'premarket_movers',
+            'gap_volatility_scanner', 
+            'catalyst_tracker',
+            'technical_snapshot',
+            'options_heatmap',
+            'custom_filters'
+        ];
+
+        // Show loading states for all modules
+        modules.forEach(module => this.showLoadingState(module, true));
+
+        try {
+            const syncPromises = modules.map(module => this.refreshModule(module));
+            await Promise.all(syncPromises);
+        } finally {
+            // Hide loading states for all modules
+            modules.forEach(module => this.showLoadingState(module, false));
+        }
+    }
+
+    async refreshModule(moduleName) {
+        const button = document.querySelector(`[data-module="${moduleName}"] .module-refresh`);
+        if (button) {
+            button.classList.add('refreshing');
+        }
+
+        try {
+            // Show loading state for this specific module
+            this.showLoadingState(moduleName, true);
+            
+            // Simulate network delay
+            await this.delay(Math.random() * 1000 + 500);
+            
+            // Simulate random errors
+            await this.simulateAPICall(moduleName);
+            
+            // Generate fresh data with variations
+            this.generateFreshData();
+            
+            // Load module data
+            await this.loadModuleData(moduleName);
+            
+        } catch (error) {
+            console.error(`Failed to refresh ${moduleName}:`, error);
+            this.showToast('warning', 'Module Update Failed', `${moduleName.replace('_', ' ')} could not be updated: ${error.message}`);
+            throw error;
+        } finally {
+            this.showLoadingState(moduleName, false);
+            if (button) {
+                button.classList.remove('refreshing');
+            }
+        }
+    }
+
+    generateFreshData() {
+        // Generate slight variations in the data to simulate real updates
+        this.sampleData.premarket_movers.gainers.forEach(stock => {
+            const variation = (Math.random() - 0.5) * 0.5; // +/- 0.25
+            stock.price += variation;
+            stock.change += variation;
+            stock.change_percent = (stock.change / (stock.price - stock.change)) * 100;
+            stock.volume += Math.floor((Math.random() - 0.5) * 10000);
+        });
+
+        this.sampleData.premarket_movers.losers.forEach(stock => {
+            const variation = (Math.random() - 0.5) * 0.5;
+            stock.price += variation;
+            stock.change += variation;
+            stock.change_percent = (stock.change / (stock.price - stock.change)) * 100;
+            stock.volume += Math.floor((Math.random() - 0.5) * 10000);
+        });
+
+        // Update other data sections similarly
+        this.sampleData.options_flow.put_call_ratio += (Math.random() - 0.5) * 0.1;
+        this.sampleData.options_flow.put_call_ratio = Math.max(0.1, Math.min(2.0, this.sampleData.options_flow.put_call_ratio));
+    }
+
+    async simulateAPICall(moduleName) {
+        // Randomly simulate different types of errors
+        const shouldError = Math.random() < 0.12; // 12% chance of error
+        
+        if (shouldError) {
+            const errorType = this.errorPatterns[Math.floor(Math.random() * this.errorPatterns.length)];
+            
+            if (this.currentRetryCount < this.retryAttempts) {
+                this.currentRetryCount++;
+                this.showToast('warning', 'Retrying...', `${errorType.message} (Attempt ${this.currentRetryCount}/${this.retryAttempts})`);
+                
+                // Exponential backoff
+                await this.delay(Math.pow(2, this.currentRetryCount) * 500);
+                
+                // Recursive retry
+                return this.simulateAPICall(moduleName);
+            } else {
+                throw new Error(errorType.message);
+            }
+        }
+        
+        // Success case
+        this.currentRetryCount = 0;
+    }
+
+    async loadModuleData(moduleName) {
+        switch (moduleName) {
+            case 'premarket_movers':
+                await this.loadPremarketMovers();
+                break;
+            case 'gap_volatility_scanner':
+                await this.loadGapVolatilityData();
+                break;
+            case 'catalyst_tracker':
+                await this.loadCatalystData();
+                break;
+            case 'technical_snapshot':
+                await this.loadTechnicalData();
+                break;
+            case 'options_heatmap':
+                await this.loadOptionsData();
+                break;
+            case 'custom_filters':
+                await this.loadCustomFiltersData();
+                break;
+        }
+    }
+
+    async loadInitialData() {
+        // Load all modules with sample data
+        await Promise.all([
+            this.loadPremarketMovers(),
+            this.loadGapVolatilityData(),
+            this.loadCatalystData(),
+            this.loadTechnicalData(),
+            this.loadOptionsData(),
+            this.loadCustomFiltersData()
+        ]);
+    }
+
+    async loadPremarketMovers() {
+        await this.delay(200);
+        
+        // Load gainers
+        const gainersBody = document.getElementById('gainersTableBody');
+        gainersBody.innerHTML = this.sampleData.premarket_movers.gainers.map(stock => `
+            <tr>
+                <td><a href="#" class="symbol-link">${stock.symbol}</a></td>
+                <td class="price-positive">$${stock.price.toFixed(2)}</td>
+                <td class="price-positive">+$${stock.change.toFixed(2)}</td>
+                <td class="price-positive">+${stock.change_percent.toFixed(2)}%</td>
+                <td>${this.formatVolume(stock.volume)}</td>
+                <td>${stock.relative_volume.toFixed(2)}x</td>
+                <td><a href="${stock.options_chain_link}" class="symbol-link" target="_blank">Chain</a></td>
+            </tr>
+        `).join('');
+
+        // Load losers
+        const losersBody = document.getElementById('losersTableBody');
+        losersBody.innerHTML = this.sampleData.premarket_movers.losers.map(stock => `
+            <tr>
+                <td><a href="#" class="symbol-link">${stock.symbol}</a></td>
+                <td class="price-negative">$${stock.price.toFixed(2)}</td>
+                <td class="price-negative">$${stock.change.toFixed(2)}</td>
+                <td class="price-negative">${stock.change_percent.toFixed(2)}%</td>
+                <td>${this.formatVolume(stock.volume)}</td>
+                <td>${stock.relative_volume.toFixed(2)}x</td>
+                <td><a href="${stock.options_chain_link}" class="symbol-link" target="_blank">Chain</a></td>
+            </tr>
+        `).join('');
+    }
+
+    async loadGapVolatilityData() {
+        await this.delay(200);
+        
+        // Load gap up stocks
+        const gapUpBody = document.getElementById('gapUpTableBody');
+        gapUpBody.innerHTML = this.sampleData.gap_volatility.gap_up.map(stock => `
+            <tr>
+                <td><a href="#" class="symbol-link">${stock.symbol}</a></td>
+                <td class="price-positive">+${stock.gap_percent.toFixed(2)}%</td>
+                <td><span class="${this.getIVRankClass(stock.iv_rank)}">${stock.iv_rank}</span></td>
+                <td>${stock.iv_crush_potential}</td>
+                <td>${stock.liquidity_score}</td>
+                <td>$${stock.bid_ask_spread.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        // Load gap down stocks
+        const gapDownBody = document.getElementById('gapDownTableBody');
+        gapDownBody.innerHTML = this.sampleData.gap_volatility.gap_down.map(stock => `
+            <tr>
+                <td><a href="#" class="symbol-link">${stock.symbol}</a></td>
+                <td class="price-negative">${stock.gap_percent.toFixed(2)}%</td>
+                <td><span class="${this.getIVRankClass(stock.iv_rank)}">${stock.iv_rank}</span></td>
+                <td>${stock.iv_crush_potential}</td>
+                <td>${stock.liquidity_score}</td>
+                <td>$${stock.bid_ask_spread.toFixed(2)}</td>
+            </tr>
+        `).join('');
+    }
+
+    async loadCatalystData() {
+        await this.delay(150);
+        
+        // Today's earnings
+        const todayEarnings = document.getElementById('todayEarnings');
+        todayEarnings.innerHTML = this.sampleData.catalysts.earnings_today.map(ticker => 
+            `<span class="earnings-ticker">${ticker}</span>`
+        ).join('');
+
+        // Tomorrow's earnings
+        const tomorrowEarnings = document.getElementById('tomorrowEarnings');
+        tomorrowEarnings.innerHTML = this.sampleData.catalysts.earnings_tomorrow.map(ticker => 
+            `<span class="earnings-ticker">${ticker}</span>`
+        ).join('');
+
+        // Latest news
+        const latestNews = document.getElementById('latestNews');
+        latestNews.innerHTML = this.sampleData.catalysts.news_events.map(news => `
+            <div class="news-item">
+                <div class="news-headline">${news.headline}</div>
+                <div class="news-meta">${news.symbol} • ${this.formatTime(news.timestamp)}</div>
+            </div>
+        `).join('');
+
+        // Macro events
+        const macroEvents = document.getElementById('macroEvents');
+        macroEvents.innerHTML = this.sampleData.catalysts.macro_events.map(event => `
+            <div class="macro-event">
+                <div>
+                    <div class="event-name">${event.event}</div>
+                    <div class="event-time">${event.time}</div>
+                </div>
+                <span class="event-impact ${event.impact.toLowerCase()}">${event.impact}</span>
+            </div>
+        `).join('');
+    }
+
+    async loadTechnicalData() {
+        await this.delay(300);
+        
+        const selectedSymbol = document.getElementById('technicalSymbolSelect').value;
+        this.updateTechnicalData(selectedSymbol);
+    }
+
+    updateTechnicalData(symbol) {
+        const data = this.sampleData.technical_data[symbol];
+        if (!data) return;
+
+        // Add slight variations to make updates visible
+        const rsiVariation = (Math.random() - 0.5) * 5;
+        const atrVariation = (Math.random() - 0.5) * 0.5;
+        const supportVariation = (Math.random() - 0.5) * 2;
+        const resistanceVariation = (Math.random() - 0.5) * 2;
+
+        document.getElementById('rsiValue').textContent = Math.max(0, Math.min(100, data.rsi + rsiVariation)).toFixed(1);
+        document.getElementById('macdValue').textContent = data.macd;
+        document.getElementById('bollingerValue').textContent = data.bollinger;
+        document.getElementById('atrValue').textContent = Math.max(0, data.atr + atrVariation).toFixed(2);
+        document.getElementById('supportValue').textContent = `$${Math.max(0, data.support + supportVariation).toFixed(2)}`;
+        document.getElementById('resistanceValue').textContent = `$${Math.max(0, data.resistance + resistanceVariation).toFixed(2)}`;
+
+        // Draw simple chart
+        this.drawMiniChart(symbol);
+    }
+
+    drawMiniChart(symbol) {
+        const chartContainer = document.getElementById('technicalChart');
+        
+        // Create a simple SVG-based chart
+        const timestamp = new Date().toLocaleTimeString();
+        chartContainer.innerHTML = `
+            <svg width="100%" height="100%" viewBox="0 0 300 160" style="background: var(--color-background);">
+                <defs>
+                    <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" style="stop-color:var(--color-primary);stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:var(--color-primary);stop-opacity:0.1" />
+                    </linearGradient>
+                </defs>
+                
+                <!-- Chart line -->
+                <polyline 
+                    fill="none" 
+                    stroke="var(--color-primary)" 
+                    stroke-width="2" 
+                    points="20,120 60,80 100,100 140,60 180,90 220,40 260,70 280,50"
+                />
+                
+                <!-- Chart area fill -->
+                <polygon 
+                    fill="url(#chartGradient)" 
+                    points="20,120 60,80 100,100 140,60 180,90 220,40 260,70 280,50 280,140 20,140"
+                />
+                
+                <!-- Chart title -->
+                <text x="150" y="25" text-anchor="middle" fill="var(--color-text)" font-size="14" font-weight="500">
+                    ${symbol} Price Action
+                </text>
+                
+                <!-- Update timestamp -->
+                <text x="150" y="155" text-anchor="middle" fill="var(--color-text-secondary)" font-size="10">
+                    Updated: ${timestamp}
+                </text>
+            </svg>
+        `;
+    }
+
+    async loadOptionsData() {
+        await this.delay(250);
+        
+        // Update metrics with variations
+        document.getElementById('putCallRatio').textContent = this.sampleData.options_flow.put_call_ratio.toFixed(2);
+        document.getElementById('darkPoolActivity').textContent = this.sampleData.options_flow.dark_pool_activity;
+
+        // Load unusual options activity
+        const unusualBody = document.getElementById('unusualOptionsTableBody');
+        unusualBody.innerHTML = this.sampleData.options_flow.unusual_activity.map(option => `
+            <tr>
+                <td><a href="#" class="symbol-link">${option.symbol}</a></td>
+                <td>${option.type}</td>
+                <td>$${option.strike}</td>
+                <td>${option.expiry}</td>
+                <td>${this.formatVolume(option.volume)}</td>
+                <td class="price-positive">+${this.formatVolume(option.oi_change)}</td>
+            </tr>
+        `).join('');
+    }
+
+    async loadCustomFiltersData() {
+        await this.delay(100);
+        // Custom filters data is mostly static UI elements
+        // Market countdown is handled separately
+    }
+
+    startMarketCountdown() {
+        const updateCountdown = () => {
+            const now = new Date();
+            const marketOpen = new Date();
+            marketOpen.setHours(9, 30, 0, 0); // 9:30 AM market open
+            
+            // If it's past market open, set for next day
+            if (now >= marketOpen) {
+                marketOpen.setDate(marketOpen.getDate() + 1);
+            }
+            
+            const diff = marketOpen - now;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            const countdownElement = document.querySelector('.countdown-value');
+            if (countdownElement) {
+                countdownElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        };
+        
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }
+
+    startAutoRefresh() {
+        this.stopAutoRefresh();
+        
+        if (this.autoRefreshEnabled) {
+            this.autoRefreshTimer = setInterval(() => {
+                if (!this.isLoading) {
+                    this.performSync();
+                }
+            }, this.refreshInterval * 1000);
+        }
+    }
+
+    stopAutoRefresh() {
+        if (this.autoRefreshTimer) {
+            clearInterval(this.autoRefreshTimer);
+            this.autoRefreshTimer = null;
+        }
+    }
+
+    showLoadingState(moduleName, show) {
+        const loadingSelectors = {
+            'premarket_movers': ['#gainersLoading', '#losersLoading'],
+            'gap_volatility_scanner': ['#gapUpLoading', '#gapDownLoading'],
+            'catalyst_tracker': ['#earningsTodayLoading', '#earningsTomorrowLoading', '#newsLoading', '#macroEventsLoading'],
+            'technical_snapshot': ['#chartLoading', '#indicatorsLoading'],
+            'options_heatmap': ['#optionsHeatmapLoading'],
+            'custom_filters': ['#marketTimingLoading']
+        };
+
+        const selectors = loadingSelectors[moduleName] || [];
+        selectors.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                if (show) {
+                    element.classList.add('active');
+                } else {
+                    element.classList.remove('active');
+                }
+            }
+        });
+    }
+
+    updateSyncButton(state) {
+        const button = document.getElementById('syncButton');
+        const icon = button.querySelector('.sync-icon');
+        const text = button.querySelector('.sync-text');
+        const spinner = button.querySelector('.sync-spinner');
+
+        // Reset classes
+        button.classList.remove('syncing', 'success', 'error');
+        
+        switch (state) {
+            case 'syncing':
+                button.classList.add('syncing');
+                button.disabled = true;
+                text.textContent = 'SYNCING...';
+                icon.classList.add('hidden');
+                spinner.classList.remove('hidden');
+                break;
+            case 'success':
+                button.classList.add('success');
+                button.disabled = false;
+                text.textContent = 'SUCCESS';
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                icon.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                break;
+            case 'error':
+                button.classList.add('error');
+                button.disabled = false;
+                text.textContent = 'RETRY';
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+                icon.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                break;
+            default: // idle
+                button.disabled = false;
+                text.textContent = 'SYNC NOW';
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>`;
+                icon.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                break;
+        }
+    }
+
+    updateConnectionStatus(status) {
+        const statusElement = document.getElementById('connectionStatus');
+        const indicator = statusElement.querySelector('.connection-status__indicator');
+        const text = statusElement.querySelector('.connection-status__text');
+
+        indicator.classList.remove('warning', 'error');
+        
+        switch (status) {
+            case 'connected':
+                text.textContent = 'Connected';
+                break;
+            case 'syncing':
+                indicator.classList.add('warning');
+                text.textContent = 'Syncing...';
+                break;
+            case 'error':
+                indicator.classList.add('error');
+                text.textContent = 'Connection Error';
+                break;
+        }
+    }
+
+    updateLastSyncTime(time) {
+        const element = document.getElementById('lastSyncTime');
+        if (time === 'Never') {
+            element.textContent = 'Last sync: Never';
+        } else {
+            const timeString = time.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            element.textContent = `Last sync: ${timeString}`;
+        }
+        this.lastSyncTime = time;
+    }
+
+    showToast(type, title, message, duration = 5000) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast toast--${type}`;
+        
+        // Different icons for different toast types
+        const icons = {
+            success: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C851" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+            error: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+            warning: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>`,
+            info: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"/><path d="m12 8 .01 0"/></svg>`
+        };
+        
+        toast.innerHTML = `
+            <div class="toast__icon">${icons[type] || icons.info}</div>
+            <div class="toast__content">
+                <div class="toast__title">${title}</div>
+                <div class="toast__message">${message}</div>
+            </div>
+            <button class="toast__close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         `;
 
-        // Render recommendations
-        const recommendationsContainer = document.getElementById('recommendations');
-        recommendationsContainer.innerHTML = insights.actionable_recommendations.map(rec => {
-            const riskClass = rec.risk_level.toLowerCase().replace(/[\s-]/g, '');
-            
-            return `
-                <div class="recommendation-card">
-                    <div class="recommendation-title">${rec.strategy}</div>
-                    <div class="recommendation-description">${rec.description}</div>
-                    <div class="recommendation-meta">
-                        <span class="risk-level risk-${riskClass}">${rec.risk_level} Risk</span>
-                        <span class="time-horizon">${rec.time_horizon}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // Add close functionality
+        const closeButton = toast.querySelector('.toast__close');
+        closeButton.addEventListener('click', () => this.removeToast(toast));
+
+        container.appendChild(toast);
+
+        // Auto-remove after duration
+        setTimeout(() => {
+            this.removeToast(toast);
+        }, duration);
+    }
+
+    removeToast(toast) {
+        toast.classList.add('toast--exit');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }
+
+    // Utility methods
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    formatVolume(volume) {
+        if (volume >= 1000000) {
+            return (volume / 1000000).toFixed(1) + 'M';
+        } else if (volume >= 1000) {
+            return (volume / 1000).toFixed(1) + 'K';
+        }
+        return volume.toString();
+    }
+
+    formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+        });
+    }
+
+    getIVRankClass(rank) {
+        if (rank >= 70) return 'iv-rank-high';
+        if (rank >= 40) return 'iv-rank-medium';
+        return 'iv-rank-low';
     }
 }
 
-// Initialize the dashboard when the DOM is loaded
+// Initialize the dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new MarketDashboard();
+    window.dashboard = new PremarketDashboard();
+});
+
+// Handle page visibility changes for auto-refresh
+document.addEventListener('visibilitychange', () => {
+    if (window.dashboard) {
+        if (document.hidden) {
+            window.dashboard.stopAutoRefresh();
+        } else {
+            window.dashboard.startAutoRefresh();
+        }
+    }
 });

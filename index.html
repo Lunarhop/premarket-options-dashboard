@@ -3,141 +3,425 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Performance Dashboard</title>
+    <title>Premarket Options Intelligence</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="dashboard">
-        <!-- Header -->
-        <header class="dashboard__header">
-            <div class="header__content">
-                <h1 class="header__title">Stock Performance Dashboard</h1>
-                <div class="header__info">
-                    <div class="current-time" id="currentTime"></div>
-                    <div class="last-updated">Last updated: <span id="lastUpdated"></span></div>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="container flex justify-between items-center">
+            <h1 class="navbar__title">Premarket Options Intelligence</h1>
+            <div class="navbar__actions flex items-center gap-16">
+                <div class="sync-status flex items-center gap-8">
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="connection-status__indicator"></span>
+                        <span class="connection-status__text">Connected</span>
+                    </div>
+                    <div class="last-sync" id="lastSyncTime">
+                        Last sync: Never
+                    </div>
                 </div>
-            </div>
-        </header>
-
-        <!-- Filters -->
-        <div class="filters">
-            <div class="time-filters">
-                <button class="btn btn--sm filter-btn active" data-period="1D">1D</button>
-                <button class="btn btn--sm filter-btn" data-period="1W">1W</button>
-                <button class="btn btn--sm filter-btn" data-period="1M">1M</button>
-                <button class="btn btn--sm filter-btn" data-period="3M">3M</button>
-                <button class="btn btn--sm filter-btn" data-period="YTD">YTD</button>
-                <button class="btn btn--sm filter-btn" data-period="1Y">1Y</button>
-            </div>
-            <div class="sector-filter">
-                <select class="form-control" id="sectorFilter">
-                    <option value="all">All Sectors</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Communication Services">Communication Services</option>
-                    <option value="Industrials">Industrials</option>
-                    <option value="Energy">Energy</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Financials">Financials</option>
-                    <option value="Consumer Discretionary">Consumer Discretionary</option>
-                    <option value="Health Care">Health Care</option>
-                    <option value="Consumer Staples">Consumer Staples</option>
-                    <option value="Materials">Materials</option>
-                    <option value="Real Estate">Real Estate</option>
-                </select>
+                <button id="syncButton" class="btn btn--primary flex items-center gap-4">
+                    <span class="sync-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                        </svg>
+                    </span>
+                    <span class="sync-text">SYNC NOW</span>
+                    <span class="sync-spinner hidden"></span>
+                </button>
+                <div class="settings-dropdown">
+                    <button class="btn btn--secondary btn--sm" id="settingsToggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    <div class="settings-panel hidden" id="settingsPanel">
+                        <h4 class="settings-panel__title">Settings</h4>
+                        <div class="settings-option">
+                            <label class="flex justify-between items-center">
+                                <span>Auto-refresh</span>
+                                <input type="checkbox" id="autoRefreshToggle" checked>
+                            </label>
+                        </div>
+                        <div class="settings-option">
+                            <label for="refreshInterval">Refresh interval</label>
+                            <select id="refreshInterval" class="form-control">
+                                <option value="15">15 seconds</option>
+                                <option value="30" selected>30 seconds</option>
+                                <option value="60">60 seconds</option>
+                                <option value="300">5 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+    </header>
 
-        <!-- Main Content -->
-        <main class="dashboard__main">
-            <!-- Market Overview -->
-            <section class="market-overview">
-                <h2 class="section-title">Market Overview</h2>
-                <div class="market-cards" id="marketCards">
-                    <!-- Market index cards will be populated by JavaScript -->
+    <!-- Dashboard Content -->
+    <main class="dashboard container">
+        <div class="dashboard__grid">
+            <!-- Premarket Movers Module -->
+            <section class="dashboard__module premarket-movers" id="premarketMoversModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Premarket Movers</h3>
+                    <div class="module__controls flex items-center gap-8">
+                        <select class="form-control" id="premarketFilter">
+                            <option value="all">All Stocks</option>
+                            <option value="optionable" selected>Optionable Only</option>
+                        </select>
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="premarket_movers">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Market Performance Chart -->
-            <section class="chart-section">
-                <h2 class="section-title">Daily Performance Overview</h2>
-                <div class="chart-container">
-                    <img src="https://pplx-res.cloudinary.com/image/upload/v1750298155/pplx_code_interpreter/f7394657_wlqldp.jpg" alt="Daily Performance Across Major Asset Classes" class="performance-chart">
-                </div>
-            </section>
-
-            <!-- Top Gainers and Losers -->
-            <section class="gainers-losers">
-                <div class="gainers-losers__container">
-                    <div class="gainers">
-                        <h3 class="subsection-title">Top Gainers</h3>
-                        <div class="stock-table" id="topGainers">
-                            <!-- Top gainers will be populated by JavaScript -->
+                <div class="module__content">
+                    <div class="module-tabs">
+                        <button class="tab-btn active" data-tab="gainers">Top Gainers</button>
+                        <button class="tab-btn" data-tab="losers">Top Losers</button>
+                    </div>
+                    <div class="tab-content active" id="gainersTab">
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Price</th>
+                                        <th>Change</th>
+                                        <th>Change%</th>
+                                        <th>Volume</th>
+                                        <th>Rel Volume</th>
+                                        <th>Options</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gainersTableBody">
+                                    <!-- Will be populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-skeleton" id="gainersLoading">
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
                         </div>
                     </div>
-                    <div class="losers">
-                        <h3 class="subsection-title">Top Losers</h3>
-                        <div class="stock-table" id="topLosers">
-                            <!-- Top losers will be populated by JavaScript -->
+                    <div class="tab-content" id="losersTab">
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Price</th>
+                                        <th>Change</th>
+                                        <th>Change%</th>
+                                        <th>Volume</th>
+                                        <th>Rel Volume</th>
+                                        <th>Options</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="losersTableBody">
+                                    <!-- Will be populated by JS -->
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Currencies and Commodities -->
-            <section class="assets-overview">
-                <div class="currencies">
-                    <h3 class="subsection-title">Currency Performance</h3>
-                    <div class="asset-cards" id="currencyCards">
-                        <!-- Currency cards will be populated by JavaScript -->
-                    </div>
-                </div>
-                <div class="commodities">
-                    <h3 class="subsection-title">Commodities Tracking</h3>
-                    <div class="asset-cards" id="commodityCards">
-                        <!-- Commodity cards will be populated by JavaScript -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Sector Performance -->
-            <section class="sector-performance">
-                <h2 class="section-title">Sector Performance</h2>
-                <div class="chart-container">
-                    <img src="https://pplx-res.cloudinary.com/image/upload/v1750298083/pplx_code_interpreter/c787b18e_tmob1l.jpg" alt="Market Sector Performance: Year-to-Date Returns" class="sector-chart">
-                </div>
-                <div class="sector-table" id="sectorTable">
-                    <!-- Sector table will be populated by JavaScript -->
-                </div>
-            </section>
-
-            <!-- Market News -->
-            <section class="market-news">
-                <h2 class="section-title">Latest Market News</h2>
-                <div class="news-feed" id="newsFeed">
-                    <!-- News items will be populated by JavaScript -->
-                </div>
-            </section>
-
-            <!-- Investment Insights -->
-            <section class="investment-insights">
-                <h2 class="section-title">Investment Insights</h2>
-                <div class="insights-container">
-                    <div class="market-outlook">
-                        <h3 class="subsection-title">Market Outlook</h3>
-                        <div class="outlook-content" id="marketOutlook">
-                            <!-- Market outlook will be populated by JavaScript -->
-                        </div>
-                    </div>
-                    <div class="recommendations">
-                        <h3 class="subsection-title">Actionable Recommendations</h3>
-                        <div class="recommendations-content" id="recommendations">
-                            <!-- Recommendations will be populated by JavaScript -->
+                        <div class="loading-skeleton" id="losersLoading">
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
                         </div>
                     </div>
                 </div>
             </section>
-        </main>
-    </div>
+
+            <!-- Gap & Volatility Scanner -->
+            <section class="dashboard__module gap-scanner" id="gapVolatilityModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Gap & Volatility Scanner</h3>
+                    <div class="module__controls">
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="gap_volatility_scanner">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="module__content">
+                    <div class="module-tabs">
+                        <button class="tab-btn active" data-tab="gap-up">Gap Up (>2%)</button>
+                        <button class="tab-btn" data-tab="gap-down">Gap Down (<-2%)</button>
+                    </div>
+                    <div class="tab-content active" id="gap-upTab">
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Gap%</th>
+                                        <th>IV Rank</th>
+                                        <th>IV Crush</th>
+                                        <th>Liquidity</th>
+                                        <th>Spread</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gapUpTableBody">
+                                    <!-- Will be populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-skeleton" id="gapUpLoading">
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="gap-downTab">
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Gap%</th>
+                                        <th>IV Rank</th>
+                                        <th>IV Crush</th>
+                                        <th>Liquidity</th>
+                                        <th>Spread</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gapDownTableBody">
+                                    <!-- Will be populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-skeleton" id="gapDownLoading">
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Catalyst Tracker Module -->
+            <section class="dashboard__module catalyst-tracker" id="catalystTrackerModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Catalyst Tracker</h3>
+                    <div class="module__controls">
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="catalyst_tracker">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="module__content">
+                    <div class="catalyst-grid">
+                        <div class="catalyst-card">
+                            <h4 class="catalyst-card__title">Today's Earnings</h4>
+                            <div class="catalyst-card__content" id="todayEarnings">
+                                <!-- Will be populated by JS -->
+                            </div>
+                            <div class="loading-skeleton" id="earningsTodayLoading">
+                                <div class="skeleton-pill"></div>
+                                <div class="skeleton-pill"></div>
+                                <div class="skeleton-pill"></div>
+                            </div>
+                        </div>
+                        <div class="catalyst-card">
+                            <h4 class="catalyst-card__title">Tomorrow's Earnings</h4>
+                            <div class="catalyst-card__content" id="tomorrowEarnings">
+                                <!-- Will be populated by JS -->
+                            </div>
+                            <div class="loading-skeleton" id="earningsTomorrowLoading">
+                                <div class="skeleton-pill"></div>
+                                <div class="skeleton-pill"></div>
+                            </div>
+                        </div>
+                        <div class="catalyst-card">
+                            <h4 class="catalyst-card__title">Latest News</h4>
+                            <div class="catalyst-card__content" id="latestNews">
+                                <!-- Will be populated by JS -->
+                            </div>
+                            <div class="loading-skeleton" id="newsLoading">
+                                <div class="skeleton-news"></div>
+                                <div class="skeleton-news"></div>
+                            </div>
+                        </div>
+                        <div class="catalyst-card">
+                            <h4 class="catalyst-card__title">Macro Events</h4>
+                            <div class="catalyst-card__content" id="macroEvents">
+                                <!-- Will be populated by JS -->
+                            </div>
+                            <div class="loading-skeleton" id="macroEventsLoading">
+                                <div class="skeleton-event"></div>
+                                <div class="skeleton-event"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Technical Snapshot Module -->
+            <section class="dashboard__module technical-snapshot" id="technicalSnapshotModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Technical Snapshot</h3>
+                    <div class="module__controls flex items-center gap-8">
+                        <select class="form-control" id="technicalSymbolSelect">
+                            <option value="AAPL">AAPL</option>
+                            <option value="TSLA">TSLA</option>
+                        </select>
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="technical_snapshot">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="module__content">
+                    <div class="technical-grid">
+                        <div class="technical-chart" id="technicalChart">
+                            <!-- Mini chart will be rendered here -->
+                            <div class="loading-skeleton" id="chartLoading">
+                                <div class="skeleton-chart"></div>
+                            </div>
+                        </div>
+                        <div class="technical-indicators">
+                            <div class="indicator-card">
+                                <div class="indicator-label">RSI</div>
+                                <div class="indicator-value" id="rsiValue">--</div>
+                            </div>
+                            <div class="indicator-card">
+                                <div class="indicator-label">MACD</div>
+                                <div class="indicator-value" id="macdValue">--</div>
+                            </div>
+                            <div class="indicator-card">
+                                <div class="indicator-label">Bollinger</div>
+                                <div class="indicator-value" id="bollingerValue">--</div>
+                            </div>
+                            <div class="indicator-card">
+                                <div class="indicator-label">ATR</div>
+                                <div class="indicator-value" id="atrValue">--</div>
+                            </div>
+                            <div class="indicator-card">
+                                <div class="indicator-label">Support</div>
+                                <div class="indicator-value" id="supportValue">--</div>
+                            </div>
+                            <div class="indicator-card">
+                                <div class="indicator-label">Resistance</div>
+                                <div class="indicator-value" id="resistanceValue">--</div>
+                            </div>
+                            <div class="loading-skeleton" id="indicatorsLoading">
+                                <div class="skeleton-indicator"></div>
+                                <div class="skeleton-indicator"></div>
+                                <div class="skeleton-indicator"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Options Heatmap Module -->
+            <section class="dashboard__module options-heatmap" id="optionsHeatmapModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Options Heatmap</h3>
+                    <div class="module__controls">
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="options_heatmap">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="module__content">
+                    <div class="heatmap-metrics flex justify-between">
+                        <div class="metric-card">
+                            <div class="metric-label">Put/Call Ratio</div>
+                            <div class="metric-value" id="putCallRatio">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Dark Pool Activity</div>
+                            <div class="metric-value" id="darkPoolActivity">--</div>
+                        </div>
+                    </div>
+                    <div class="unusual-options">
+                        <h4 class="mb-8">Unusual Options Activity</h4>
+                        <div class="data-table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Type</th>
+                                        <th>Strike</th>
+                                        <th>Expiry</th>
+                                        <th>Volume</th>
+                                        <th>OI Change</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="unusualOptionsTableBody">
+                                    <!-- Will be populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="loading-skeleton" id="optionsHeatmapLoading">
+                            <div class="skeleton-row"></div>
+                            <div class="skeleton-row"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Custom Filters & Timing -->
+            <section class="dashboard__module custom-filters" id="customFiltersModule">
+                <div class="module__header flex justify-between items-center">
+                    <h3 class="module__title">Custom Filters & Timing</h3>
+                    <div class="module__controls">
+                        <button class="btn btn--sm btn--secondary module-refresh" data-module="custom_filters">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="module__content">
+                    <div class="flex custom-filters-grid">
+                        <div class="strategy-selector">
+                            <h4>Strategy Selector</h4>
+                            <div class="strategy-options">
+                                <label class="strategy-option">
+                                    <input type="checkbox" name="strategy" value="credit_spreads" checked>
+                                    <span>Credit Spreads</span>
+                                </label>
+                                <label class="strategy-option">
+                                    <input type="checkbox" name="strategy" value="debit_spreads">
+                                    <span>Debit Spreads</span>
+                                </label>
+                                <label class="strategy-option">
+                                    <input type="checkbox" name="strategy" value="naked_options">
+                                    <span>Naked Options</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="market-timing">
+                            <h4>Market Timing</h4>
+                            <div class="market-timer">
+                                <div class="countdown-timer" id="marketCountdown">
+                                    <div class="countdown-value">--:--:--</div>
+                                    <div class="countdown-label">Until Market Open</div>
+                                </div>
+                            </div>
+                            <div class="loading-skeleton" id="marketTimingLoading">
+                                <div class="skeleton-timer"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast Notification System -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="app.js"></script>
 </body>
